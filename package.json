@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "python3 -m http.server 8080 --bind 0.0.0.0",
+    "dev": "sh dev-server.sh",
     "build": "mkdir -p dist && cp index.html dist/index.html",
     "build:dev": "mkdir -p dist && cp index.html dist/index.html"
   }
