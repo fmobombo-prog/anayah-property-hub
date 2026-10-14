@@ -1,5 +1,5 @@
 -- =====================================================================
--- Anayah Gestim · modèle d'abonnement Ydila · schéma Supabase
+-- Anayah Gestim · modèle d'abonnement · schéma Supabase
 -- À exécuter une fois dans Supabase : SQL Editor → New query → Run.
 -- Le script peut être relancé sans perte de données.
 -- =====================================================================
@@ -7,7 +7,7 @@
 create extension if not exists pgcrypto;
 
 -- ---------------------------------------------------------------------
--- 1. Formules Ydila et paramètres du service
+-- 1. Formules et paramètres du service
 -- ---------------------------------------------------------------------
 create table if not exists public.plans (
   code                 text primary key,
@@ -34,7 +34,7 @@ create table if not exists public.parametres_ydila (
   jours_essai            int not null default 30,
   jours_grace            int not null default 7,
   instructions_paiement  text not null default
-    'Payez par Mobile money ou par virement, puis déclarez le paiement avec la référence de la transaction. Votre abonnement est prolongé dès validation par l''équipe Ydila.'
+    'Payez par Mobile money ou par virement, puis déclarez le paiement avec la référence de la transaction. Votre abonnement est prolongé dès validation par l''administrateur.'
 );
 insert into public.parametres_ydila (id) values (1) on conflict do nothing;
 
@@ -76,7 +76,7 @@ create table if not exists public.invitations (
 );
 
 -- ---------------------------------------------------------------------
--- 3. Paiements d'abonnement (déclarés par l'agence, validés par Ydila)
+-- 3. Paiements d'abonnement (déclarés par l'agence, validés par l'administrateur)
 -- ---------------------------------------------------------------------
 create table if not exists public.paiements_abonnement (
   id             uuid primary key default gen_random_uuid(),
@@ -189,7 +189,7 @@ create policy pa_declaration on public.paiements_abonnement for insert with chec
   role_dans(agence_id) = 'admin' and statut = 'en_attente' and declare_par = auth.uid()
   and traite_par is null and traite_le is null and periode_debut is null and periode_fin is null and motif_rejet is null);
 
--- Les données de gestion restent privées à l'agence : l'équipe Ydila n'y a pas accès.
+-- Les données de gestion restent privées à l'agence : l'administrateur du service n'y a pas accès.
 drop policy if exists enr_lecture on public.enregistrements;
 create policy enr_lecture on public.enregistrements for select using (role_dans(agence_id) is not null);
 drop policy if exists enr_ajout on public.enregistrements;
@@ -218,7 +218,7 @@ begin
     if lim is not null then
       select count(*) into n from enregistrements e where e.agence_id = new.agence_id and e.collection = new.collection;
       if n >= lim then
-        raise exception 'Limite de la formule % atteinte : % % au maximum. Passez à une formule supérieure dans « Abonnement Ydila ».',
+        raise exception 'Limite de la formule % atteinte : % % au maximum. Passez à une formule supérieure dans « Abonnement ».',
           nom_plan, lim, case new.collection when 'cites' then 'cité(s)' else 'lots' end
           using errcode = 'P0001';
       end if;
@@ -350,13 +350,13 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------
--- 9. Actions de l'équipe Ydila (super administrateurs)
+-- 9. Actions de l'administrateur (super administrateurs)
 -- ---------------------------------------------------------------------
 create or replace function public.valider_paiement(p uuid) returns void
 language plpgsql security definer set search_path = public as $$
 declare pa paiements_abonnement; ag agences; nb int; debut date; fin date;
 begin
-  if not est_super_admin() then raise exception 'Réservé à l''équipe Ydila.' using errcode = 'P0001'; end if;
+  if not est_super_admin() then raise exception 'Réservé à l''administrateur.' using errcode = 'P0001'; end if;
   select * into pa from paiements_abonnement where id = p for update;
   if pa.id is null or pa.statut <> 'en_attente' then raise exception 'Ce paiement a déjà été traité.' using errcode = 'P0001'; end if;
   select * into ag from agences where id = pa.agence_id for update;
@@ -372,7 +372,7 @@ end $$;
 create or replace function public.rejeter_paiement(p uuid, p_motif text) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  if not est_super_admin() then raise exception 'Réservé à l''équipe Ydila.' using errcode = 'P0001'; end if;
+  if not est_super_admin() then raise exception 'Réservé à l''administrateur.' using errcode = 'P0001'; end if;
   update paiements_abonnement
      set statut = 'rejete', motif_rejet = nullif(trim(p_motif), ''), traite_par = auth.uid(), traite_le = now()
    where id = p and statut = 'en_attente';
@@ -383,7 +383,7 @@ create or replace function public.console_agences() returns json
 language plpgsql stable security definer set search_path = public as $$
 declare r json;
 begin
-  if not est_super_admin() then raise exception 'Réservé à l''équipe Ydila.' using errcode = 'P0001'; end if;
+  if not est_super_admin() then raise exception 'Réservé à l''administrateur.' using errcode = 'P0001'; end if;
   select coalesce(json_agg(x order by x.cree_le desc), '[]'::json) into r from (
     select ag.id, ag.nom, ag.devise, ag.plan_code, p.nom as plan_nom, ag.fin_essai, ag.paye_jusqu_au, ag.cree_le,
            statut_agence(ag.id) as statut,
@@ -406,7 +406,7 @@ exception when duplicate_object then null; end $$;
 
 -- ---------------------------------------------------------------------
 -- 11. Après votre première inscription dans l'application, faites-vous
---     super administrateur Ydila (remplacez l'adresse) :
+--     super administrateur (remplacez l'adresse) :
 --
 --   insert into public.super_admins (user_id)
 --   select id from auth.users where email = 'votre.adresse@exemple.com';
