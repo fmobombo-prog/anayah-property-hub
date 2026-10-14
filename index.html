@@ -223,11 +223,47 @@ td .sub{display:block;color:var(--muted);font-size:12px}
   .main{padding-block:20px 50px}
 }
 @media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
+
+/* Ydila : connexion, abonnements, équipe, console */
+.app[hidden]{display:none}
+.gate{min-height:100%;display:grid;place-items:center;padding:32px 16px;background:var(--side)}
+.gbox{background:var(--surface);color:var(--ink);border-radius:18px;padding:28px;width:min(440px,100%);display:flex;flex-direction:column;gap:18px;box-shadow:var(--shadow)}
+.gbox .brand{padding:0}
+.gbox .brand small{color:var(--brass)}
+.gbox h2{font-size:22px}
+.gbox p{margin:0;color:var(--muted);font-size:14px}
+.gbox .form .grid2{grid-template-columns:1fr}
+.gbox .btn.primary{width:100%;justify-content:center;padding:11px 14px}
+.glinks{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13.5px}
+.gmsg{font-size:13.5px;padding:10px 12px;border-radius:9px}
+.gmsg.bad{background:var(--bad-2);color:var(--bad)}
+.gmsg.ok{background:var(--ok-2);color:var(--ok)}
+.side-link{all:unset;cursor:pointer;color:var(--side-ink);font-size:12.5px;text-decoration:underline;text-underline-offset:2px}
+.banner.info{background:var(--info-2)}
+.banner.bad{background:var(--bad-2)}
+.banner .link{margin-left:6px}
+.g-plans{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.plan{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.plan.cur{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.plan h3{font-size:18px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.plan .price{font-family:var(--f-display);font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.plan .price small{font-family:var(--f-body);font-size:13px;font-weight:500;color:var(--muted)}
+.plan ul{margin:0;padding-left:18px;font-size:13.5px;display:flex;flex-direction:column;gap:3px}
+.plan .btn{margin-top:auto;justify-content:center}
+.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
+.meter{display:flex;flex-direction:column;gap:6px}
+.meter .ml{display:flex;justify-content:space-between;font-size:13px}
+.meter .ml span{color:var(--muted)}
+.meter .sub{font-size:12px;color:var(--muted)}
+.instr{background:var(--brass-2);border-radius:10px;padding:12px 14px;font-size:13.5px;white-space:pre-wrap;margin-bottom:14px}
+.big{font-family:var(--f-display);font-size:24px;font-variant-numeric:tabular-nums}
+.upsell{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
 </style>
 </head>
 <body>
 
-<div class="app">
+<div id="gate" hidden></div>
+<div class="app" id="app">
   <aside class="side">
     <div class="brand">
       <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="18" y="1" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="1" y="18" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="18" y="18" width="15" height="15" rx="2" fill="#c9962f"/></svg>
@@ -250,6 +286,8 @@ td .sub{display:block;color:var(--muted);font-size:12px}
 <div id="modalRoot"></div>
 <div id="toastRoot"></div>
 
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 /* ---------- utilitaires ---------- */
 const $ = s => document.querySelector(s);
@@ -276,6 +314,33 @@ let CFG = {devise: 'FCFA', societe: 'Anayah Gestim'};
 let DB = null, DL = null, MODE = 'init', READONLY = false;
 const LKEY = 'anayah-gestim-local';
 const byId = (c, id) => S[c].find(x => x.id === id);
+function upsertLocal(col, rec) { const i = S[col].findIndex(x => x.id === rec.id); if (i >= 0) S[col][i] = rec; else S[col].push(rec); }
+const daysBetween = (a, b) => Math.round((new Date(b + 'T00:00') - new Date(a + 'T00:00')) / 864e5);
+const addDays = (d, n) => { const t = new Date(d + 'T00:00'); t.setDate(t.getDate() + n); return iso(t); };
+
+/* ---------- Ydila : abonnements et stockage en ligne (Supabase) ---------- */
+const SBCFG = window.ANAYAH_CONFIG || {};
+let SB = null, SESSION = null, SESSION_UID = null, AGENCE = null, ETAT = null, SUPER = false, MES_AGENCES = [], CHAN = null;
+let RECOVERY = /type=recovery/.test(location.hash);
+let ABO = {plans: [], paiements: []}, EQUIPE = {membres: [], invitations: []}, CONSOLE = null;
+const FONCTIONS = {exports: 'Exports CSV', quittances: 'Quittances et relevés de compte', syndic: 'Module Syndic & charges', support_prioritaire: 'Support prioritaire'};
+const ROLES = {admin: 'Administrateur', gestionnaire: 'Gestionnaire', lecture: 'Consultation'};
+const STATUT_ABO = {essai: ['Essai gratuit', 'info'], actif: ['Actif', 'ok'], grace: ['Période de grâce', 'warn'], expire: ['Expiré', 'bad']};
+const hasF = f => MODE !== 'supabase' || !!(ETAT && ETAT.plan && (ETAT.plan.fonctions || []).includes(f));
+const isAdmin = () => MODE !== 'supabase' || !!(ETAT && ETAT.role === 'admin');
+const devY = () => esc((ETAT && ETAT.devise_ydila) || 'FCFA');
+const limTxt = (n, sing, plur) => n == null ? `${plur} illimités` : `${nf.format(n)} ${n > 1 ? plur : sing}`;
+function sbError(e) {
+  if (!e) return 'Erreur inconnue.';
+  if (e.code === 'P0001') return e.message;
+  if (e.code === '42501' || /row-level security/i.test(e.message || '')) {
+    if (ETAT && ETAT.statut === 'expire') return 'Votre abonnement Ydila a expiré : l’application est en lecture seule. Renouvelez-le dans « Abonnement Ydila ».';
+    if (ETAT && ETAT.role === 'lecture') return 'Votre rôle dans l’agence permet seulement la consultation.';
+    return 'Action non autorisée par votre formule ou votre rôle.';
+  }
+  if (/fetch|network|Failed to/i.test(e.message || '')) return 'Connexion impossible. Vérifiez votre accès à Internet puis réessayez.';
+  return e.message || 'Erreur inconnue.';
+}
 
 function localLoad() { try { const o = JSON.parse(localStorage.getItem(LKEY) || '{}'); COLS.forEach(c => S[c] = o[c] || []); if (o.cfg) CFG = {...CFG, ...o.cfg}; } catch (e) {} }
 function localSave() { try { const o = {cfg: CFG}; COLS.forEach(c => o[c] = S[c]); localStorage.setItem(LKEY, JSON.stringify(o)); } catch (e) {} }
@@ -290,6 +355,12 @@ function dbError(e) {
 async function save(col, obj) {
   if (READONLY) { toast('Votre accès est en lecture seule.'); return null; }
   const id = obj.id || uid(); const body = {...obj}; delete body.id; body.maj = new Date().toISOString();
+  if (MODE === 'supabase') {
+    const {error} = await SB.from('enregistrements').upsert({agence_id: AGENCE.id, collection: col, id, data: body});
+    if (error) { toast(sbError(error)); return null; }
+    upsertLocal(col, {id, ...body}); schedule(); refreshEtatSoon();
+    return id;
+  }
   if (MODE === 'cloud') {
     try { await DB.collection(col).doc(id).set(body); }
     catch (e) {
@@ -304,11 +375,23 @@ async function save(col, obj) {
 }
 async function remove(col, id) {
   if (READONLY) { toast('Votre accès est en lecture seule.'); return false; }
+  if (MODE === 'supabase') {
+    const {error} = await SB.from('enregistrements').delete().match({agence_id: AGENCE.id, collection: col, id});
+    if (error) { toast(sbError(error)); return false; }
+    S[col] = S[col].filter(x => x.id !== id); schedule(); refreshEtatSoon();
+    return true;
+  }
   if (MODE === 'cloud') { try { await DB.collection(col).doc(id).delete(); } catch (e) { toast(dbError(e)); return false; } }
   else { S[col] = S[col].filter(x => x.id !== id); localSave(); schedule(); }
   return true;
 }
 async function saveCfg(patch) {
+  if (MODE === 'supabase') {
+    const n = {...CFG, ...patch};
+    const {error} = await SB.rpc('maj_agence', {a: AGENCE.id, p_nom: n.societe || '', p_devise: n.devise || 'FCFA', p_tel: n.tel || '', p_adresse: n.adresse || ''});
+    if (error) { toast(sbError(error)); return false; }
+    CFG = n; AGENCE = {...AGENCE, nom: n.societe, devise: n.devise, tel: n.tel, adresse: n.adresse}; schedule(); return true;
+  }
   CFG = {...CFG, ...patch};
   if (MODE === 'cloud') { try { await DB.doc('config/app').set(CFG); } catch (e) { toast(dbError(e)); return; } }
   else { localSave(); }
@@ -477,6 +560,9 @@ const ICON = {
   interventions: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>',
   tiers: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
   params: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+  abonnement: '<path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',
+  equipe: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6"/>',
+  console: '<path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
 };
 const VIEWS = [
   ['Pilotage', [['dashboard', 'Tableau de bord']]],
@@ -485,31 +571,65 @@ const VIEWS = [
   ['Vie des cités', [['espaces', 'Espaces communs'], ['syndic', 'Syndic & charges'], ['interventions', 'Maintenance']]],
   ['Contacts', [['tiers', 'Clients & tiers'], ['params', 'Paramètres']]],
 ];
-const VIEW_INFO = {}; VIEWS.forEach(([g, items]) => items.forEach(([k, t]) => VIEW_INFO[k] = {g, t}));
+const VIEWS_COMPTE = ['Compte Ydila', [['abonnement', 'Abonnement Ydila'], ['equipe', 'Équipe'], ['console', 'Console Ydila']]];
+const VIEW_INFO = {}; [...VIEWS, VIEWS_COMPTE].forEach(([g, items]) => items.forEach(([k, t]) => VIEW_INFO[k] = {g, t}));
 if (!VIEW_INFO[UI.view]) UI.view = 'dashboard';
+const ACCOUNT_VIEWS = ['abonnement', 'equipe', 'console'];
+function navGroups() {
+  if (MODE !== 'supabase') return VIEWS;
+  return [...VIEWS, [VIEWS_COMPTE[0], VIEWS_COMPTE[1].filter(([k]) => k !== 'console' || SUPER)]];
+}
 
 /* ---------- rendu ---------- */
 let pending = false;
 function schedule() { if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; render(); }); } }
-function go(v) { UI.view = v; UI.drawer = null; try { localStorage.setItem('anayah-view', v); } catch (e) {} try { history.replaceState(null, '', '#' + v); } catch (e) {} render(); window.scrollTo(0, 0); }
+function go(v) {
+  UI.view = v; UI.drawer = null; try { localStorage.setItem('anayah-view', v); } catch (e) {} try { history.replaceState(null, '', '#' + v); } catch (e) {}
+  if (MODE === 'supabase') { if (v === 'abonnement') refreshAbo(); if (v === 'equipe') refreshEquipe(); if (v === 'console' && SUPER) refreshConsole(); }
+  render(); window.scrollTo(0, 0);
+}
+function bannerHtml() {
+  if (MODE === 'local') return `<div class="banner">${SBCFG.supabaseUrl ? 'Le service en ligne est injoignable.' : 'Le stockage en ligne n’est pas configuré.'} Vos saisies sont conservées uniquement dans ce navigateur. Pensez à télécharger régulièrement une sauvegarde depuis « Paramètres ».</div>`;
+  if (MODE === 'supabase' && ETAT) {
+    const fin = ETAT.fin_droits, j = daysBetween(TODAY, fin), renew = isAdmin() ? `<button class="link" data-a="go" data-v="abonnement">${ETAT.statut === 'essai' ? 'Choisir une formule' : 'Renouveler'}</button>` : '';
+    if (ETAT.statut === 'essai') return `<div class="banner info">Essai gratuit Ydila : ${j} jour(s) restant(s), avec toutes les fonctions de la formule Pro.${renew}</div>`;
+    if (ETAT.statut === 'grace') return `<div class="banner">Votre abonnement Ydila a pris fin le ${fmtDate(fin)}. Il reste ${j + ETAT.jours_grace} jour(s) avant le passage en lecture seule.${renew}</div>`;
+    if (ETAT.statut === 'expire') return `<div class="banner bad">Abonnement Ydila expiré : l’application est en lecture seule depuis le ${fmtDate(addDays(fin, ETAT.jours_grace + 1))}. Vos données sont conservées et restent consultables et exportables.${renew}</div>`;
+    if (ETAT.role === 'lecture') return `<div class="banner info">Votre rôle dans l’agence permet la consultation uniquement.</div>`;
+    if (ETAT.statut === 'actif' && j <= 7) return `<div class="banner info">Votre abonnement Ydila se termine le ${fmtDate(fin)}.${renew}</div>`;
+    return '';
+  }
+  if (READONLY) return `<div class="banner">Vous consultez Anayah Gestim en lecture seule. Demandez un accès Contributeur au propriétaire pour saisir des données.</div>`;
+  return '';
+}
+function footHtml() {
+  if (MODE === 'supabase' && AGENCE) {
+    const st = ETAT ? STATUT_ABO[ETAT.statut] : null;
+    return `<span><i class="dot ${ETAT && ETAT.statut !== 'actif' && ETAT.statut !== 'essai' ? 'local' : ''}"></i>${esc(AGENCE.nom)}</span><span>${ETAT ? esc(ETAT.plan.nom) + ' · ' + st[0] : ''}</span><span style="overflow-wrap:anywhere">${esc(SESSION?.user?.email || '')}</span>${MES_AGENCES.length > 1 ? '<button class="side-link" data-a="switchAg">Changer d’agence</button>' : ''}<button class="side-link" data-a="logout">Se déconnecter</button>`;
+  }
+  return MODE === 'cloud' ? `<span><i class="dot"></i>Données synchronisées</span><span>${READONLY ? 'Accès en lecture seule' : 'Partagées avec votre équipe'}</span>` : MODE === 'local' ? `<span><i class="dot local"></i>Mode local</span><span>Données gardées dans ce navigateur</span>` : '<span>Connexion…</span>';
+}
 
 function render() {
-  $('#nav').innerHTML = VIEWS.map(([g, items]) => `<div class="grp"><div class="gl">${g}</div>${items.map(([k, t]) => `<button data-a="go" data-v="${k}" ${UI.view === k ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>${t}</button>`).join('')}</div>`).join('');
-  $('#foot').innerHTML = MODE === 'cloud' ? `<span><i class="dot"></i>Données synchronisées</span><span>${READONLY ? 'Accès en lecture seule' : 'Partagées avec votre équipe'}</span>` : MODE === 'local' ? `<span><i class="dot local"></i>Mode local</span><span>Données gardées dans ce navigateur</span>` : '<span>Connexion…</span>';
+  if (UI.gate) return;
+  if ((ACCOUNT_VIEWS.includes(UI.view) && MODE !== 'supabase') || (UI.view === 'console' && !SUPER)) UI.view = 'dashboard';
+  $('#nav').innerHTML = navGroups().map(([g, items]) => `<div class="grp"><div class="gl">${g}</div>${items.map(([k, t]) => `<button data-a="go" data-v="${k}" ${UI.view === k ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>${t}</button>`).join('')}</div>`).join('');
+  $('#foot').innerHTML = footHtml();
   const info = VIEW_INFO[UI.view];
   $('#eyebrow').textContent = info.g + (CFG.societe && CFG.societe !== 'Anayah Gestim' ? ' · ' + CFG.societe : '');
   $('#title').textContent = info.t;
-  $('#banner').innerHTML = MODE === 'local' ? `<div class="banner">La base partagée n’est pas joignable depuis cette vue : vos saisies sont conservées uniquement dans ce navigateur.</div>` : READONLY ? `<div class="banner">Vous consultez Anayah Gestim en lecture seule. Demandez un accès Contributeur au propriétaire pour saisir des données.</div>` : '';
+  $('#banner').innerHTML = bannerHtml();
   const V = VIEWS_R[UI.view];
   const out = V();
   $('#actions').innerHTML = out.actions || '';
   $('#view').innerHTML = out.html;
   renderDrawer();
 }
-const loading = () => MODE === 'init' || (MODE === 'cloud' && loaded.size < COLS.length);
+const loading = () => MODE === 'init' || ((MODE === 'cloud' || MODE === 'supabase') && loaded.size < COLS.length);
 function emptyState(title, text, action) { return `<div class="panel"><div class="empty"><b>${title}</b><span>${text}</span>${action || ''}</div></div>`; }
 const addBtn = (col, extra = '') => READONLY ? '' : `<button class="btn primary" data-a="new" data-c="${col}" ${extra}>+ ${SCHEMA[col].nouveau}</button>`;
-const csvBtn = key => `<button class="btn" data-a="csv" data-k="${key}">Exporter CSV</button>`;
+const csvBtn = key => `<button class="btn" data-a="${hasF('exports') ? 'csv' : 'upsell'}" data-f="exports" data-k="${key}">Exporter CSV</button>`;
+function upsellPanel(title, text) { return `<div class="panel"><div class="empty upsell" style="align-items:center"><b>${title}</b><span>${text}</span>${isAdmin() ? '<button class="btn primary" data-a="go" data-v="abonnement">Voir les formules Ydila</button>' : '<span>Demandez à l’administrateur de votre agence de changer de formule.</span>'}</div></div>`; }
 
 /* --- Tableau de bord --- */
 function vDashboard() {
@@ -683,6 +803,7 @@ function vEspaces() {
 /* --- Syndic --- */
 function vSyndic() {
   if (loading()) return {html: emptyState('Chargement…', '')};
+  if (!hasF('syndic')) return {html: upsellPanel('Module Syndic & charges', `Les cotisations et dépenses communes sont incluses dans les formules Pro et Entreprise. Votre formule actuelle : ${esc(ETAT?.plan?.nom || '')}.`)};
   if (!S.cites.length) return {html: emptyState('Créez d’abord une cité', 'Les cotisations et dépenses communes sont tenues par cité.', addBtn('cites'))};
   const tab = UI.f.syndicTab || 'Dépenses';
   const ycot = c => S.cotisations.filter(x => x.citeId === c.id && (x.date || '').startsWith(THIS_YEAR)).reduce((s, x) => s + num(x.montant), 0);
@@ -735,24 +856,109 @@ function vTiers() {
 function vParams() {
   const nEx = COLS.reduce((s, c) => s + S[c].filter(x => x.exemple).length, 0);
   const total = COLS.reduce((s, c) => s + S[c].length, 0);
+  const ro = MODE === 'supabase' ? !isAdmin() : READONLY; const dis = ro ? 'disabled' : '';
+  const stock = MODE === 'supabase' ? 'En ligne (Supabase) : les données de l’agence sont conservées sur le serveur et partagées avec les membres de son équipe.' : MODE === 'cloud' ? 'Base partagée : toute personne ayant accès à cette application voit les mêmes données.' : 'Navigateur local uniquement.';
   return {html: `<div class="grid g-2" style="align-items:start">
-    <section class="panel"><div class="ph"><h2>Agence</h2></div>
+    <section class="panel"><div class="ph"><h2>Agence</h2>${MODE === 'supabase' && ro ? '<p>Modifiable par un administrateur</p>' : ''}</div>
       <form id="cfgForm" class="form"><div class="grid2">
-        <div class="fld"><label for="cfg_societe">Nom de l’agence ou du gestionnaire</label><input id="cfg_societe" name="societe" value="${esc(CFG.societe || '')}" ${READONLY ? 'disabled' : ''}></div>
-        <div class="fld half"><label for="cfg_devise">Devise</label><input id="cfg_devise" name="devise" list="devises" value="${esc(CFG.devise || '')}" ${READONLY ? 'disabled' : ''}><datalist id="devises"><option value="FCFA"><option value="USD"><option value="CDF"><option value="EUR"><option value="XOF"><option value="XAF"><option value="MAD"><option value="GNF"></datalist></div>
-        <div class="fld half"><label for="cfg_tel">Téléphone de l’agence</label><input id="cfg_tel" name="tel" value="${esc(CFG.tel || '')}" ${READONLY ? 'disabled' : ''}></div>
-        <div class="fld"><label for="cfg_adresse">Adresse (figure sur les quittances)</label><input id="cfg_adresse" name="adresse" value="${esc(CFG.adresse || '')}" ${READONLY ? 'disabled' : ''}></div>
-      </div>${READONLY ? '' : '<div class="formbar"><span class="sp"></span><button class="btn primary">Enregistrer</button></div>'}</form>
+        <div class="fld"><label for="cfg_societe">Nom de l’agence ou du gestionnaire</label><input id="cfg_societe" name="societe" value="${esc(CFG.societe || '')}" ${dis}></div>
+        <div class="fld half"><label for="cfg_devise">Devise</label><input id="cfg_devise" name="devise" list="devises" value="${esc(CFG.devise || '')}" ${dis}><datalist id="devises"><option value="FCFA"><option value="USD"><option value="CDF"><option value="EUR"><option value="XOF"><option value="XAF"><option value="MAD"><option value="GNF"></datalist></div>
+        <div class="fld half"><label for="cfg_tel">Téléphone de l’agence</label><input id="cfg_tel" name="tel" value="${esc(CFG.tel || '')}" ${dis}></div>
+        <div class="fld"><label for="cfg_adresse">Adresse (figure sur les quittances)</label><input id="cfg_adresse" name="adresse" value="${esc(CFG.adresse || '')}" ${dis}></div>
+      </div>${ro ? '' : '<div class="formbar"><span class="sp"></span><button class="btn primary">Enregistrer</button></div>'}</form>
     </section>
     <section class="panel"><div class="ph"><h2>Données</h2><p>${total} enregistrement(s)</p></div>
       <div class="list">
         <div class="li"><div class="t"><b>Sauvegarde complète</b><span>Toutes les cités, lots, ventes, baux et charges au format JSON.</span></div><button class="btn sm" data-a="backup">Télécharger</button></div>
+        ${READONLY ? '' : `<div class="li"><div class="t"><b>Importer une sauvegarde</b><span>Reprend un fichier JSON téléchargé ici, par exemple pour passer du mode local au stockage en ligne.</span></div><button class="btn sm" data-a="importPick">Importer</button></div>`}
         <div class="li"><div class="t"><b>Données d’exemple</b><span>${nEx ? nEx + ' enregistrement(s) marqués « exemple » pour découvrir l’application.' : 'Aucune donnée d’exemple.'}</span></div>${nEx && !READONLY ? '<button class="btn sm danger" data-a="purge">Supprimer les exemples</button>' : ''}</div>
-        <div class="li"><div class="t"><b>Stockage</b><span>${MODE === 'cloud' ? 'Base partagée : toute personne ayant accès à cette application voit les mêmes données.' : 'Navigateur local uniquement.'}</span></div></div>
+        <div class="li"><div class="t"><b>Stockage</b><span>${stock}</span></div></div>
+        ${MODE === 'supabase' ? `<div class="li"><div class="t"><b>Compte</b><span style="overflow-wrap:anywhere">${esc(SESSION?.user?.email || '')} · ${esc(ROLES[ETAT?.role] || '')}</span></div><button class="btn sm" data-a="logout">Se déconnecter</button></div>` : ''}
       </div>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
     </section></div>`};
 }
-const VIEWS_R = {dashboard: vDashboard, cites: vCites, lots: vLots, ventes: vVentes, baux: vBaux, espaces: vEspaces, syndic: vSyndic, interventions: vInterventions, tiers: vTiers, params: vParams};
+
+/* --- Abonnement Ydila --- */
+function vAbonnement() {
+  if (!ETAT) return {html: emptyState('Chargement de votre abonnement…', '')};
+  const e = ETAT, p = e.plan, u = e.usage, st = STATUT_ABO[e.statut], j = daysBetween(TODAY, e.fin_droits);
+  const meter = (l, n, max) => `<div class="meter"><div class="ml"><span>${l}</span><b class="num">${nf.format(n)}${max == null ? '' : ' / ' + nf.format(max)}</b></div><div class="bar"><i style="width:${max == null ? 6 : Math.min(100, n / Math.max(max, 1) * 100)}%;${max != null && n >= max ? 'background:var(--bad)' : ''}"></i></div><span class="sub">${max == null ? 'Illimité' : n >= max ? 'Limite atteinte' : nf.format(max - n) + ' restant(s)'}</span></div>`;
+  const echeance = e.statut === 'essai' ? `Fin de l’essai : ${fmtDate(e.fin_essai)} (${j} jour(s))` : e.statut === 'actif' ? `Payé jusqu’au ${fmtDate(e.fin_droits)} (${j} jour(s))` : e.statut === 'grace' ? `Échu le ${fmtDate(e.fin_droits)} · lecture seule dans ${j + e.jours_grace} jour(s)` : `Échu le ${fmtDate(e.fin_droits)} · lecture seule`;
+  const attente = ABO.paiements.filter(x => x.statut === 'en_attente');
+  const plans = ABO.plans.map(pl => {
+    const cur = pl.code === p.code, an = pl.prix_mensuel * (12 - pl.mois_offerts_annuel);
+    return `<div class="plan ${cur ? 'cur' : ''}"><h3>${esc(pl.nom)}${cur ? '<span class="chip s-info">Formule actuelle</span>' : ''}</h3>
+      <div class="price">${nf.format(pl.prix_mensuel)} <small>${devY()} / mois</small></div>
+      <div style="color:var(--muted);font-size:13px">ou ${nf.format(an)} ${devY()} / an${pl.mois_offerts_annuel ? ` (${pl.mois_offerts_annuel} mois offerts)` : ''}</div>
+      <ul><li>${limTxt(pl.max_cites, 'cité', 'cités')}</li><li>${limTxt(pl.max_lots, 'lot', 'lots')}</li><li>${limTxt(pl.max_utilisateurs, 'utilisateur', 'utilisateurs')}</li><li>Ventes, locations, espaces communs, maintenance</li>${(pl.fonctions || []).map(f => `<li>${esc(FONCTIONS[f] || f)}</li>`).join('')}</ul>
+      ${isAdmin() ? `<button class="btn ${cur ? '' : 'primary'}" data-a="choosePlan" data-code="${esc(pl.code)}">${cur ? (e.statut === 'essai' ? 'Souscrire' : 'Renouveler') : 'Passer à ' + esc(pl.nom)}</button>` : ''}</div>`;
+  }).join('');
+  return {actions: isAdmin() ? `<button class="btn primary" data-a="choosePlan" data-code="${esc(p.code)}">Déclarer un paiement</button>` : '', html: `<div class="grid" style="gap:16px">
+    <section class="panel"><div class="ph"><h2>Formule ${esc(p.nom)} <span class="chip s-${st[1]}" style="vertical-align:middle;margin-left:6px">${st[0]}</span></h2><p>${echeance}</p></div>
+      <div class="meters">${meter('Cités', u.cites, p.max_cites)}${meter('Lots', u.lots, p.max_lots)}${meter('Utilisateurs', u.utilisateurs, p.max_utilisateurs)}</div>
+      ${attente.length ? `<p style="margin:14px 0 0;font-size:13.5px"><span class="chip s-warn">En attente</span> ${attente.length} paiement(s) déclaré(s) en cours de vérification par l’équipe Ydila.</p>` : ''}
+    </section>
+    <div class="grid g-plans">${plans || '<div class="panel"><div class="empty">Chargement des formules…</div></div>'}</div>
+    <section class="panel"><div class="ph"><h2>Historique des paiements</h2><p>${ABO.paiements.length} paiement(s)</p></div>
+      ${ABO.paiements.length ? `<div class="tbl"><table><thead><tr><th>Déclaré le</th><th>Formule</th><th>Durée</th><th class="n">Montant</th><th>Mode</th><th>Référence</th><th>Période couverte</th><th>Statut</th></tr></thead><tbody>
+      ${ABO.paiements.map(x => `<tr><td>${fmtDate((x.declare_le || '').slice(0, 10))}</td><td>${esc(ABO.plans.find(pl => pl.code === x.plan_code)?.nom || x.plan_code)}</td><td>${x.cycle === 'annuel' ? '12 mois' : '1 mois'}</td><td class="n">${nf.format(x.montant)} ${devY()}</td><td>${esc(x.mode)}</td><td class="mono">${esc(x.reference || '')}</td><td>${x.periode_debut ? fmtDate(x.periode_debut) + ' → ' + fmtDate(x.periode_fin) : '—'}</td><td>${x.statut === 'valide' ? chip('Payée') : x.statut === 'rejete' ? `<span class="chip s-bad">Rejeté</span>${x.motif_rejet ? `<span class="sub">${esc(x.motif_rejet)}</span>` : ''}` : chip('En attente')}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="empty">Aucun paiement déclaré pour le moment.</div>'}
+    </section></div>`};
+}
+
+/* --- Équipe --- */
+function vEquipe() {
+  const adm = isAdmin(), me = SESSION?.user?.id;
+  const max = ETAT?.plan?.max_utilisateurs, used = EQUIPE.membres.length + EQUIPE.invitations.length;
+  return {html: `<div class="grid g-2" style="align-items:start">
+    <section class="panel"><div class="ph"><h2>Membres de l’agence</h2><p>${used}${max == null ? '' : ' / ' + max} utilisateur(s)</p></div>
+      ${EQUIPE.membres.length ? `<div class="tbl"><table><thead><tr><th>Utilisateur</th><th>Rôle</th><th>Depuis</th><th></th></tr></thead><tbody>
+      ${EQUIPE.membres.map(m => `<tr><td style="overflow-wrap:anywhere">${esc(m.email || '—')}${m.user_id === me ? ' <span class="sub">vous</span>' : ''}</td><td>${esc(ROLES[m.role])}</td><td>${fmtDate((m.ajoute_le || '').slice(0, 10))}</td><td class="n">${adm ? `<button class="btn sm ghost danger" data-a="rmMember" data-id="${m.user_id}" data-v="${esc(m.email || '')}">Retirer</button>` : ''}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="empty">Chargement…</div>'}
+      ${EQUIPE.invitations.length ? `<h3 style="font-size:15px;margin:18px 0 8px">Invitations en attente</h3><div class="list">${EQUIPE.invitations.map(i => `<div class="li"><div class="t"><b>${esc(i.email)}</b><span>${esc(ROLES[i.role])} · invité le ${fmtDate((i.invite_le || '').slice(0, 10))}</span></div>${adm ? `<button class="btn sm ghost danger" data-a="rmInvit" data-v="${esc(i.email)}">Annuler</button>` : ''}</div>`).join('')}</div>` : ''}
+    </section>
+    <section class="panel"><div class="ph"><h2>Ajouter un utilisateur</h2></div>
+      ${adm ? `<form id="inviteForm" class="form"><div class="grid2">
+        <div class="fld"><label for="inv_email">Adresse e-mail</label><input id="inv_email" name="email" type="email" required placeholder="collegue@agence.com"></div>
+        <div class="fld"><label for="inv_role">Rôle</label><select id="inv_role" name="role"><option value="gestionnaire">Gestionnaire</option><option value="admin">Administrateur</option><option value="lecture">Consultation</option></select></div>
+      </div><div class="formbar"><span class="sp"></span><button class="btn primary">Ajouter</button></div></form>
+      <ul style="margin:14px 0 0;padding-left:18px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px"><li><b>Administrateur</b> : tout, plus l’abonnement et l’équipe.</li><li><b>Gestionnaire</b> : saisie et modification des données.</li><li><b>Consultation</b> : lecture seule.</li><li>La personne crée son compte avec cette adresse sur Anayah Gestim : l’accès à l’agence lui est donné automatiquement.</li></ul>` : '<p style="margin:0;color:var(--muted)">Seul un administrateur de l’agence peut ajouter des utilisateurs.</p>'}
+    </section></div>`};
+}
+
+/* --- Console Ydila (équipe Ydila) --- */
+function vConsole() {
+  if (!CONSOLE) return {html: emptyState('Chargement de la console…', '')};
+  const ags = CONSOLE.agences, pend = CONSOLE.paiements.filter(p => p.statut === 'en_attente');
+  const cnt = s => ags.filter(a => a.statut === s).length;
+  const rev = CONSOLE.paiements.filter(p => p.statut === 'valide' && (p.traite_le || '').slice(0, 7) === THIS_MONTH).reduce((s, p) => s + num(p.montant), 0);
+  const dv = esc(CONSOLE.params.devise || 'FCFA');
+  const prix = p => { const pl = CONSOLE.plans.find(x => x.code === p.plan_code); return pl ? (p.cycle === 'annuel' ? pl.prix_mensuel * (12 - pl.mois_offerts_annuel) : pl.prix_mensuel) : null; };
+  return {actions: `<button class="btn" data-a="consoleRefresh">Actualiser</button><button class="btn" data-a="editYParams">Paramètres Ydila</button>`, html: `<div class="grid" style="gap:16px">
+    <div class="grid g-kpi">
+      <div class="kpi hl"><span class="l">Encaissé en ${esc(fmtMonth(THIS_MONTH))}</span><span class="v">${nf.format(rev)} ${dv}</span><span class="s">Paiements validés ce mois</span></div>
+      <div class="kpi"><span class="l">Agences</span><span class="v">${ags.length}</span><span class="s">${cnt('actif')} active(s) · ${cnt('essai')} en essai</span></div>
+      <div class="kpi"><span class="l">À surveiller</span><span class="v">${cnt('grace') + cnt('expire')}</span><span class="s">${cnt('grace')} en grâce · ${cnt('expire')} expirée(s)</span></div>
+      <div class="kpi"><span class="l">Paiements à valider</span><span class="v">${pend.length}</span><span class="s">${nf.format(pend.reduce((s, p) => s + num(p.montant), 0))} ${dv} déclarés</span></div>
+    </div>
+    <section class="panel"><div class="ph"><h2>Paiements à valider</h2><p>Vérifiez la référence sur votre relevé Mobile money ou bancaire avant de valider</p></div>
+      ${pend.length ? `<div class="tbl"><table><thead><tr><th>Agence</th><th>Formule</th><th>Durée</th><th class="n">Déclaré</th><th class="n">Tarif</th><th>Mode</th><th>Référence</th><th>Le</th><th></th></tr></thead><tbody>
+      ${pend.map(p => { const t = prix(p); return `<tr><td><b>${esc(p.agence?.nom || '—')}</b></td><td>${esc(CONSOLE.plans.find(x => x.code === p.plan_code)?.nom || p.plan_code)}</td><td>${p.cycle === 'annuel' ? '12 mois' : '1 mois'}</td><td class="n" style="${t != null && num(p.montant) < t ? 'color:var(--bad);font-weight:600' : ''}">${nf.format(p.montant)}</td><td class="n">${t == null ? '—' : nf.format(t)}</td><td>${esc(p.mode)}</td><td class="mono">${esc(p.reference || '')}</td><td>${fmtDate((p.declare_le || '').slice(0, 10))}</td><td class="n" style="white-space:nowrap"><button class="btn sm primary" data-a="valider" data-id="${p.id}">Valider</button> <button class="btn sm ghost danger" data-a="rejeter" data-id="${p.id}">Rejeter</button></td></tr>`; }).join('')}
+      </tbody></table></div>` : '<div class="empty">Aucun paiement en attente.</div>'}
+    </section>
+    <section class="panel"><div class="ph"><h2>Agences clientes</h2><p>${ags.length} agence(s)</p></div>
+      ${ags.length ? `<div class="tbl"><table><thead><tr><th>Agence</th><th>Formule</th><th>Statut</th><th>Échéance</th><th class="n">Cités</th><th class="n">Lots</th><th class="n">Utilisateurs</th><th>Créée le</th></tr></thead><tbody>
+      ${ags.map(a => `<tr><td><b>${esc(a.nom)}</b><span class="sub" style="overflow-wrap:anywhere">${esc(a.admins || '')}</span></td><td>${esc(a.plan_nom)}</td><td><span class="chip s-${STATUT_ABO[a.statut][1]}">${STATUT_ABO[a.statut][0]}</span></td><td>${fmtDate(a.fin_droits)}</td><td class="n">${a.cites}</td><td class="n">${a.lots}</td><td class="n">${a.utilisateurs}</td><td>${fmtDate((a.cree_le || '').slice(0, 10))}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="empty">Aucune agence inscrite.</div>'}
+    </section>
+    <section class="panel"><div class="ph"><h2>Formules</h2><p>Les changements s’appliquent aux prochains paiements et limites</p></div>
+      <div class="tbl"><table><thead><tr><th>Formule</th><th class="n">Prix mensuel</th><th class="n">Mois offerts / an</th><th class="n">Cités</th><th class="n">Lots</th><th class="n">Utilisateurs</th><th>Fonctions</th><th></th></tr></thead><tbody>
+      ${CONSOLE.plans.map(pl => `<tr><td><b>${esc(pl.nom)}</b>${pl.actif ? '' : ' <span class="sub">désactivée</span>'}</td><td class="n">${nf.format(pl.prix_mensuel)} ${dv}</td><td class="n">${pl.mois_offerts_annuel}</td><td class="n">${pl.max_cites ?? '∞'}</td><td class="n">${pl.max_lots ?? '∞'}</td><td class="n">${pl.max_utilisateurs ?? '∞'}</td><td>${(pl.fonctions || []).map(f => esc(FONCTIONS[f] || f)).join(', ') || '—'}</td><td class="n"><button class="btn sm" data-a="editPlan" data-code="${esc(pl.code)}">Modifier</button></td></tr>`).join('')}
+      </tbody></table></div>
+    </section></div>`};
+}
+const VIEWS_R = {dashboard: vDashboard, cites: vCites, lots: vLots, ventes: vVentes, baux: vBaux, espaces: vEspaces, syndic: vSyndic, interventions: vInterventions, tiers: vTiers, params: vParams, abonnement: vAbonnement, equipe: vEquipe, console: vConsole};
 
 /* ---------- tiroir de détail ---------- */
 function renderDrawer() {
@@ -787,7 +993,7 @@ function dVente(v) {
   return {eyebrow: 'Vente · ' + esc(c.statut), title: `Lot ${lotName(v.lotId)} — ${tiersName(v.tiersId)}`, sub: `${esc(lotCiteName(v.lotId))}${lot?.surface ? ' · ' + nf.format(lot.surface) + ' m²' : ''}${lot?.titre ? ' · TF ' + esc(lot.titre) : ''} · signée le ${fmtDate(v.date)}`, body: `
     <div class="sumrow"><div><span>Prix</span><b>${money(c.prix)}</b></div><div><span>Encaissé</span><b>${money(c.paid)}</b></div><div><span>Reste</span><b>${money(c.reste)}</b></div><div><span>En retard</span><b style="color:${c.retard > .5 ? 'var(--bad)' : 'inherit'}">${money(c.retard)}</b></div></div>
     <div class="bar" style="height:8px"><i style="width:${c.ratio * 100}%"></i></div>
-    ${READONLY ? '' : `<div class="formbar" style="margin:0"><button class="btn primary" data-a="payvente" data-id="${v.id}">+ Enregistrer un paiement</button><button class="btn" data-a="releve" data-id="${v.id}">Relevé de compte</button><span class="sp"></span><button class="btn ghost" data-a="edit" data-c="ventes" data-id="${v.id}">Modifier</button></div>`}
+    ${READONLY ? '' : `<div class="formbar" style="margin:0"><button class="btn primary" data-a="payvente" data-id="${v.id}">+ Enregistrer un paiement</button><button class="btn" data-a="${hasF('quittances') ? 'releve' : 'upsell'}" data-f="quittances" data-id="${v.id}">Relevé de compte</button><span class="sp"></span><button class="btn ghost" data-a="edit" data-c="ventes" data-id="${v.id}">Modifier</button></div>`}
     <div><h3>Échéancier</h3><div class="tbl"><table><thead><tr><th>Échéance</th><th>Date</th><th class="n">Montant</th><th class="n">Réglé</th><th>État</th></tr></thead><tbody>${c.sched.map(e => `<tr><td>${esc(e.label)}</td><td>${fmtDate(e.date)}</td><td class="n">${money(e.montant)}</td><td class="n">${money(e.paye)}</td><td>${chip(e.etat)}</td></tr>`).join('')}</tbody></table></div></div>
     <div><h3>Paiements reçus</h3>${pays.length ? `<div class="tbl"><table><thead><tr><th>Date</th><th>Mode</th><th>Référence</th><th class="n">Montant</th><th></th></tr></thead><tbody>${pays.map(p => `<tr><td>${fmtDate(p.date)}</td><td>${esc(p.mode || '')}</td><td class="mono">${esc(p.ref || '')}</td><td class="n">${money(p.montant)}</td><td class="n">${READONLY ? '' : `<button class="btn sm ghost danger" data-a="delpay" data-c="ventes" data-id="${v.id}" data-p="${p.id}" aria-label="Supprimer ce paiement">Retirer</button>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aucun paiement reçu.</div>'}</div>
     ${v.notaire || v.notes ? `<div><h3>Acte & notes</h3><p style="margin:0;white-space:pre-wrap">${esc([v.notaire, v.notes].filter(Boolean).join('\n'))}</p></div>` : ''}`};
@@ -798,7 +1004,7 @@ function dBail(b) {
     <div class="sumrow"><div><span>Loyer + charges</span><b>${money(c.mens)}</b></div><div><span>Caution</span><b>${money(b.caution)}</b></div><div><span>Total versé</span><b>${money(c.paid)}</b></div><div><span>Impayés</span><b style="color:${c.impaye > .5 ? 'var(--bad)' : 'inherit'}">${money(c.impaye)}</b></div></div>
     ${READONLY ? '' : `<div class="formbar" style="margin:0">${b.statut === 'Actif' ? `<button class="btn primary" data-a="payrent" data-id="${b.id}">+ Encaisser un loyer</button>` : ''}<span class="sp"></span><button class="btn ghost" data-a="edit" data-c="baux" data-id="${b.id}">Modifier le bail</button></div>`}
     <div><h3>Loyers mois par mois</h3>${c.rows.length ? `<div class="months">${c.rows.slice().reverse().map(r => `<div class="mo s-${ST[r.etat]}"><b>${fmtMonth(r.m)}</b><span>${r.etat}</span></div>`).join('')}</div>` : '<div class="empty">Le bail n’a pas encore commencé.</div>'}</div>
-    <div><h3>Encaissements & quittances</h3>${pays.length ? `<div class="tbl"><table><thead><tr><th>Mois</th><th>Payé le</th><th>Mode</th><th class="n">Montant</th><th></th></tr></thead><tbody>${pays.map(p => `<tr><td>${fmtMonth(p.mois)}</td><td>${fmtDate(p.date)}</td><td>${esc(p.mode || '')}</td><td class="n">${money(p.montant)}</td><td class="n" style="white-space:nowrap"><button class="btn sm" data-a="quittance" data-id="${b.id}" data-p="${p.id}">Quittance</button>${READONLY ? '' : ` <button class="btn sm ghost danger" data-a="delpay" data-c="baux" data-id="${b.id}" data-p="${p.id}">Retirer</button>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aucun loyer encaissé.</div>'}</div>
+    <div><h3>Encaissements & quittances</h3>${pays.length ? `<div class="tbl"><table><thead><tr><th>Mois</th><th>Payé le</th><th>Mode</th><th class="n">Montant</th><th></th></tr></thead><tbody>${pays.map(p => `<tr><td>${fmtMonth(p.mois)}</td><td>${fmtDate(p.date)}</td><td>${esc(p.mode || '')}</td><td class="n">${money(p.montant)}</td><td class="n" style="white-space:nowrap"><button class="btn sm" data-a="${hasF('quittances') ? 'quittance' : 'upsell'}" data-f="quittances" data-id="${b.id}" data-p="${p.id}">Quittance</button>${READONLY ? '' : ` <button class="btn sm ghost danger" data-a="delpay" data-c="baux" data-id="${b.id}" data-p="${p.id}">Retirer</button>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aucun loyer encaissé.</div>'}</div>
     ${b.notes ? `<div><h3>Notes</h3><p style="margin:0;white-space:pre-wrap">${esc(b.notes)}</p></div>` : ''}`};
 }
 function dEspace(e) {
@@ -855,6 +1061,11 @@ const DEFAULTS = {
 };
 function openForm(col, rec) {
   const sc = SCHEMA[col]; const isNew = !rec || !rec.id; const data = isNew ? {...DEFAULTS[col](), ...(rec || {})} : rec;
+  if (isNew && MODE === 'supabase' && ETAT && (col === 'cites' || col === 'lots')) {
+    const max = col === 'cites' ? ETAT.plan.max_cites : ETAT.plan.max_lots;
+    if (max != null && S[col].length >= max) { upsellModal(`Votre formule ${ETAT.plan.nom} permet ${max} ${col === 'cites' ? 'cité(s)' : 'lots'} au maximum. Passez à une formule supérieure pour en ajouter.`); return; }
+  }
+  if (isNew && (col === 'charges' || col === 'cotisations') && !hasF('syndic')) { upsellModal('Le module Syndic & charges est inclus dans les formules Pro et Entreprise.'); return; }
   modal(`<form id="mainForm" class="form" novalidate><h2>${isNew ? sc.nouveau : 'Modifier ' + sc.titre}</h2><div class="grid2">${sc.fields.map(f => fieldHtml(f, data[f.k])).join('')}</div><div class="err" id="formErr" hidden></div>
     <div class="formbar">${!isNew ? `<button type="button" class="btn ghost danger" data-a="del" data-c="${col}" data-id="${rec.id}">Supprimer</button>` : ''}<span class="sp"></span><button type="button" class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary">Enregistrer</button></div></form>`,
     async form => {
@@ -914,7 +1125,13 @@ function openSub(col, id, key, fields, title, init, validate) {
 
 /* ---------- documents & exports ---------- */
 async function download(filename, data) {
-  if (!DL) { toast('Le téléchargement n’est pas disponible dans cette vue.'); return; }
+  if (!DL) {
+    if (window.claude) { toast('Le téléchargement n’est pas disponible dans cette vue.'); return; }
+    const ext = filename.split('.').pop(); const type = {csv: 'text/csv', json: 'application/json', html: 'text/html'}[ext] || 'text/plain';
+    const url = URL.createObjectURL(new Blob([data], {type: type + ';charset=utf-8'}));
+    const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000); toast('Fichier téléchargé.'); return;
+  }
   try { await DL.save({filename, data}); toast('Fichier prêt.'); }
   catch (e) { if (e && e.code === 'declined') return; if (e && e.code === 'rate_limited') toast('Une demande de téléchargement est déjà ouverte.'); else toast('Téléchargement impossible dans cette vue.'); }
 }
@@ -1006,17 +1223,250 @@ function openAide() {
     <li>Réglez la <b>devise</b> et les <b>coordonnées de l’agence</b> (utilisées sur quittances et relevés).</li>
     <li><b>Sauvegarde complète</b> : téléchargez toutes vos données au format JSON. Faites-le régulièrement.</li>
     <li><b>Supprimer les exemples</b> : retire les données de démonstration sans toucher à vos saisies.</li>
+    <li><b>Importer une sauvegarde</b> : reprend un fichier JSON, par exemple pour passer du mode local au stockage en ligne.</li>
   </ul>
+
+  <h3>Abonnement Ydila</h3>
+  <ul>
+    <li>Chaque agence démarre par <b>30 jours d’essai gratuit</b> avec toutes les fonctions Pro.</li>
+    <li>Trois formules : <b>Essentiel</b>, <b>Pro</b> et <b>Entreprise</b>. Elles diffèrent par le nombre de cités, de lots et d’utilisateurs, et par les fonctions incluses (exports, quittances, module Syndic). Le paiement annuel offre 2 mois.</li>
+    <li>Pour payer : réglez par Mobile money ou virement selon les instructions affichées, puis cliquez sur <b>Déclarer un paiement</b> et indiquez la référence de la transaction. L’abonnement est prolongé dès que l’équipe Ydila a validé le paiement.</li>
+    <li>À l’échéance, vous disposez de <b>7 jours de grâce</b>. Ensuite l’application passe en <b>lecture seule</b> : vos données restent consultables et exportables, rien n’est supprimé.</li>
+  </ul>
+
+  <h3>Équipe</h3>
+  <p>L’administrateur ajoute ses collègues par adresse e-mail avec un rôle : <b>Administrateur</b> (tout, plus l’abonnement et l’équipe), <b>Gestionnaire</b> (saisie) ou <b>Consultation</b> (lecture seule). La personne crée son compte avec cette adresse et accède directement à l’agence.</p>
 
   <h3>Exports et documents</h3>
   <p>Chaque liste s’exporte en <b>CSV</b> (séparateur « ; », compatible Excel). Quittances et relevés se téléchargent en HTML, prêts à imprimer ou enregistrer en PDF.</p>
 
   <h3>Vos données</h3>
-  <p>Selon le mode d’ouverture, les données sont soit <b>synchronisées et partagées</b> avec votre équipe (mention « Données synchronisées » en bas du menu), soit <b>conservées dans ce navigateur</b> (« Mode local »). En mode local, pensez à la sauvegarde JSON.</p>
+  <p>Avec un compte, les données de votre agence sont <b>conservées en ligne</b> et synchronisées en temps réel entre les membres de l’équipe ; elles ne sont visibles que par eux. Sans configuration en ligne, elles sont <b>conservées dans ce navigateur</b> (« Mode local ») : pensez alors à la sauvegarde JSON.</p>
 
   <div class="formbar"><span class="sp"></span><button class="btn primary" data-a="closeModal">Fermer</button></div>
 </div>`);
   $('#modalRoot .mbox')?.classList.add('wide');
+}
+
+/* ---------- Ydila : session, agences, abonnement ---------- */
+function upsellModal(msg) {
+  modal(`<h2>Fonction non incluse</h2><p style="margin:0">${esc(msg)}</p><div class="formbar"><span class="sp"></span><button class="btn ghost" data-a="closeModal">Fermer</button>${isAdmin() && MODE === 'supabase' ? '<button class="btn primary" data-a="goAbo">Voir les formules Ydila</button>' : ''}</div>`);
+}
+const UPSELL = {exports: 'Les exports CSV sont inclus dans les formules Pro et Entreprise.', quittances: 'Les quittances de loyer et relevés de compte sont inclus dans les formules Pro et Entreprise.'};
+
+const BRAND = `<div class="brand"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="18" y="1" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="1" y="18" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="18" y="18" width="15" height="15" rx="2" fill="#c9962f"/></svg><div><b>Anayah Gestim</b><small>Abonnement Ydila</small></div></div>`;
+function gateBody(kind, msg) {
+  const f = (id, l, type, extra = '') => `<div class="fld"><label for="${id}">${l}</label><input id="${id}" name="${id.split('_')[1]}" type="${type}" required ${extra}></div>`;
+  const m = `<div id="gateMsg" class="gmsg ${msg ? 'bad' : ''}" ${msg ? '' : 'hidden'}>${esc(msg || '')}</div>`;
+  if (kind === 'loading') return `<p>Connexion à votre espace…</p>`;
+  if (kind === 'error') return `<h2>Service indisponible</h2><p>${esc(msg || '')}</p><button class="btn primary" data-a="reload">Réessayer</button>`;
+  if (kind === 'login') return `<h2>Connexion</h2>${m}<form id="loginForm" class="form" novalidate><div class="grid2">${f('g_email', 'Adresse e-mail', 'email', 'autocomplete="email"')}${f('g_password', 'Mot de passe', 'password', 'autocomplete="current-password"')}</div><div class="formbar"><button class="btn primary">Se connecter</button></div></form><div class="glinks"><button class="link" data-a="gate" data-v="reset">Mot de passe oublié ?</button><button class="link" data-a="gate" data-v="signup">Créer un compte</button></div>`;
+  if (kind === 'signup') return `<h2>Créer un compte</h2><p>30 jours d’essai gratuit avec toutes les fonctions Pro, sans engagement.</p>${m}<form id="signupForm" class="form" novalidate><div class="grid2">${f('g_email', 'Adresse e-mail', 'email', 'autocomplete="email"')}${f('g_password', 'Mot de passe (8 caractères minimum)', 'password', 'autocomplete="new-password" minlength="8"')}${f('g_confirm', 'Confirmer le mot de passe', 'password', 'autocomplete="new-password"')}</div><div class="formbar"><button class="btn primary">Créer mon compte</button></div></form><div class="glinks"><span></span><button class="link" data-a="gate" data-v="login">J’ai déjà un compte</button></div>`;
+  if (kind === 'reset') return `<h2>Mot de passe oublié</h2><p>Recevez par e-mail un lien pour choisir un nouveau mot de passe.</p>${m}<form id="resetForm" class="form" novalidate><div class="grid2">${f('g_email', 'Adresse e-mail', 'email', 'autocomplete="email"')}</div><div class="formbar"><button class="btn primary">Recevoir le lien</button></div></form><div class="glinks"><span></span><button class="link" data-a="gate" data-v="login">Retour à la connexion</button></div>`;
+  if (kind === 'newpass') return `<h2>Nouveau mot de passe</h2>${m}<form id="newpassForm" class="form" novalidate><div class="grid2">${f('g_password', 'Nouveau mot de passe (8 caractères minimum)', 'password', 'autocomplete="new-password" minlength="8"')}${f('g_confirm', 'Confirmer', 'password', 'autocomplete="new-password"')}</div><div class="formbar"><button class="btn primary">Enregistrer</button></div></form>`;
+  if (kind === 'onboarding') return `<h2>Créez votre agence</h2><p>Votre essai gratuit de 30 jours commence dès maintenant.</p>${m}<form id="onboardForm" class="form" novalidate><div class="grid2"><div class="fld"><label for="g_nom">Nom de l’agence</label><input id="g_nom" name="nom" required placeholder="Agence immobilière…"></div><div class="fld"><label for="g_devise">Devise</label><input id="g_devise" name="devise" list="devisesG" value="FCFA"><datalist id="devisesG"><option value="FCFA"><option value="USD"><option value="CDF"><option value="EUR"><option value="XOF"><option value="XAF"><option value="MAD"><option value="GNF"></datalist></div></div><div class="formbar"><button class="btn primary">Commencer l’essai gratuit</button></div></form><p>Une agence vous a invité ? Son administrateur doit utiliser l’adresse <b style="overflow-wrap:anywhere">${esc(SESSION?.user?.email || '')}</b>. Reconnectez-vous ensuite.</p><div class="glinks"><span></span><button class="link" data-a="logout">Se déconnecter</button></div>`;
+  return '';
+}
+function showGate(kind, msg) {
+  UI.gate = kind; $('#app').hidden = true; closeModal(); UI.drawer = null; renderDrawer();
+  const g = $('#gate'); g.hidden = false;
+  g.innerHTML = `<div class="gate"><div class="gbox">${BRAND}${gateBody(kind, msg)}</div></div>`;
+  const i = g.querySelector('input'); if (i) i.focus();
+}
+function hideGate() { UI.gate = null; $('#gate').hidden = true; $('#gate').innerHTML = ''; $('#app').hidden = false; }
+function gateMsg(msg, ok) { const el = $('#gateMsg'); if (!el) return; el.hidden = false; el.className = 'gmsg ' + (ok ? 'ok' : 'bad'); el.textContent = msg; }
+function authErr(e) {
+  const t = (e && e.message) || '';
+  if (/invalid login/i.test(t)) return 'Adresse e-mail ou mot de passe incorrect.';
+  if (/not confirmed/i.test(t)) return 'Confirmez d’abord votre adresse grâce au lien reçu par e-mail.';
+  if (/already registered|already been registered/i.test(t)) return 'Un compte existe déjà avec cette adresse. Connectez-vous.';
+  if (/password/i.test(t) && /(least|short|weak)/i.test(t)) return 'Mot de passe trop faible : 8 caractères minimum.';
+  if (/rate limit|too many/i.test(t)) return 'Trop de tentatives. Patientez quelques minutes.';
+  return sbError(e);
+}
+
+async function sbStart() {
+  SB = window.supabase.createClient(SBCFG.supabaseUrl, SBCFG.supabaseAnonKey);
+  MODE = 'auth'; showGate('loading');
+  SB.auth.onAuthStateChange((ev, s) => {
+    if (ev === 'PASSWORD_RECOVERY') { RECOVERY = true; SESSION = s; showGate('newpass'); return; }
+    if (ev === 'SIGNED_OUT') { resetSession(); showGate('login'); return; }
+    if ((ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION') && s) setTimeout(() => enterSession(s), 0);
+  });
+  const {data, error} = await SB.auth.getSession();
+  if (error) { showGate('error', sbError(error)); return; }
+  if (data.session) enterSession(data.session); else if (!RECOVERY) showGate('login');
+}
+function resetSession() {
+  if (CHAN) { try { SB.removeChannel(CHAN); } catch (e) {} CHAN = null; }
+  SESSION = null; SESSION_UID = null; AGENCE = null; ETAT = null; SUPER = false; MES_AGENCES = []; CONSOLE = null;
+  ABO = {plans: [], paiements: []}; EQUIPE = {membres: [], invitations: []};
+  COLS.forEach(c => S[c] = []); loaded.clear(); MODE = 'auth'; READONLY = false;
+}
+async function enterSession(s) {
+  if (!s || SESSION_UID === s.user.id) return;
+  SESSION = s;
+  if (RECOVERY) { showGate('newpass'); return; }
+  SESSION_UID = s.user.id;
+  showGate('loading');
+  await SB.rpc('accepter_invitations');
+  const sa = await SB.rpc('est_super_admin'); SUPER = !!sa.data;
+  await loadAgences();
+}
+async function loadAgences(prefer) {
+  const {data, error} = await SB.from('membres').select('role, agence:agences(*)').eq('user_id', SESSION.user.id);
+  if (error) { showGate('error', sbError(error)); return; }
+  MES_AGENCES = (data || []).filter(r => r.agence).map(r => ({...r.agence, role: r.role}));
+  if (!MES_AGENCES.length) { showGate('onboarding'); return; }
+  let id = prefer; if (!id) { try { id = localStorage.getItem('anayah-agence'); } catch (e) {} }
+  await selectAgence(MES_AGENCES.find(a => a.id === id) || MES_AGENCES[0]);
+}
+async function selectAgence(ag) {
+  AGENCE = ag; try { localStorage.setItem('anayah-agence', ag.id); } catch (e) {}
+  CFG = {devise: ag.devise || 'FCFA', societe: ag.nom, tel: ag.tel || '', adresse: ag.adresse || ''};
+  MODE = 'supabase'; ETAT = null; COLS.forEach(c => S[c] = []); loaded.clear();
+  hideGate(); render();
+  await refreshEtat();
+  await sbLoadAll(); sbSubscribe();
+  refreshAbo(); refreshEquipe(); if (SUPER) refreshConsole();
+  render();
+}
+async function refreshEtat() {
+  if (!AGENCE) return;
+  const {data, error} = await SB.rpc('etat_agence', {a: AGENCE.id});
+  if (error) { toast(sbError(error)); return; }
+  ETAT = data; READONLY = !ETAT || ETAT.role === 'lecture' || ETAT.statut === 'expire';
+  schedule();
+}
+let etatT; function refreshEtatSoon() { clearTimeout(etatT); etatT = setTimeout(refreshEtat, 1200); }
+async function sbLoadAll() {
+  COLS.forEach(c => S[c] = []); loaded.clear();
+  for (let from = 0; ; from += 1000) {
+    const {data, error} = await SB.from('enregistrements').select('collection,id,data').eq('agence_id', AGENCE.id).order('collection').order('id').range(from, from + 999);
+    if (error) { toast(sbError(error)); break; }
+    data.forEach(r => { if (S[r.collection]) S[r.collection].push({id: r.id, ...r.data}); });
+    if (data.length < 1000) break;
+  }
+  COLS.forEach(c => loaded.add(c));
+}
+function sbSubscribe() {
+  if (CHAN) { try { SB.removeChannel(CHAN); } catch (e) {} }
+  const agId = AGENCE.id;
+  const onChange = p => {
+    const r = p.eventType === 'DELETE' ? p.old : p.new;
+    if (!AGENCE || AGENCE.id !== agId || !r || r.agence_id !== agId || !S[r.collection]) return;
+    if (p.eventType === 'DELETE') S[r.collection] = S[r.collection].filter(x => x.id !== r.id);
+    else upsertLocal(r.collection, {id: r.id, ...r.data});
+    schedule();
+  };
+  const base = {schema: 'public', table: 'enregistrements'};
+  CHAN = SB.channel('enr-' + agId)
+    .on('postgres_changes', {...base, event: 'INSERT', filter: 'agence_id=eq.' + agId}, onChange)
+    .on('postgres_changes', {...base, event: 'UPDATE', filter: 'agence_id=eq.' + agId}, onChange)
+    .on('postgres_changes', {...base, event: 'DELETE'}, onChange)
+    .subscribe();
+}
+async function refreshAbo() {
+  if (!AGENCE) return;
+  const [p, pa] = await Promise.all([SB.from('plans').select('*').eq('actif', true).order('ordre'), SB.from('paiements_abonnement').select('*').eq('agence_id', AGENCE.id).order('declare_le', {ascending: false})]);
+  ABO = {plans: p.data || [], paiements: pa.data || []}; schedule();
+}
+async function refreshEquipe() {
+  if (!AGENCE) return;
+  const [m, i] = await Promise.all([SB.from('membres').select('*').eq('agence_id', AGENCE.id).order('ajoute_le'), isAdmin() ? SB.from('invitations').select('*').eq('agence_id', AGENCE.id).order('invite_le') : Promise.resolve({data: []})]);
+  EQUIPE = {membres: m.data || [], invitations: i.data || []}; schedule();
+}
+async function refreshConsole() {
+  if (!SUPER) return;
+  const [a, p, pl, pr] = await Promise.all([SB.rpc('console_agences'), SB.from('paiements_abonnement').select('*, agence:agences(nom)').order('declare_le', {ascending: false}).limit(500), SB.from('plans').select('*').order('ordre'), SB.from('parametres_ydila').select('*').eq('id', 1).single()]);
+  if (a.error) { toast(sbError(a.error)); return; }
+  CONSOLE = {agences: a.data || [], paiements: p.data || [], plans: pl.data || [], params: pr.data || {}}; schedule();
+}
+async function rpc(name, args, okMsg) {
+  const {data, error} = await SB.rpc(name, args);
+  if (error) { toast(sbError(error)); return null; }
+  if (okMsg) toast(okMsg);
+  return data ?? true;
+}
+
+function openDeclare(code) {
+  if (!ABO.plans.length) { toast('Chargement des formules…'); refreshAbo(); return; }
+  const prixDe = (pl, cyc) => cyc === 'annuel' ? pl.prix_mensuel * (12 - pl.mois_offerts_annuel) : pl.prix_mensuel;
+  modal(`<form id="declForm" class="form" novalidate><h2>Déclarer un paiement Ydila</h2>
+    <div class="instr">${esc(ETAT?.instructions || '')}</div>
+    <div class="grid2">
+      <div class="fld half"><label for="d_plan">Formule</label><select id="d_plan" name="plan">${ABO.plans.map(pl => `<option value="${esc(pl.code)}" ${pl.code === code ? 'selected' : ''}>${esc(pl.nom)}</option>`).join('')}</select></div>
+      <div class="fld half"><label for="d_cycle">Durée</label><select id="d_cycle" name="cycle"><option value="mensuel">1 mois</option><option value="annuel">12 mois</option></select></div>
+      <div class="fld"><label>Montant à payer</label><b id="d_montant" class="big"></b><span class="hint" id="d_hint"></span></div>
+      <div class="fld half"><label for="d_mode">Mode de paiement</label><select id="d_mode" name="mode"><option>Mobile money</option><option>Virement</option><option>Espèces</option><option>Chèque</option></select></div>
+      <div class="fld half"><label for="d_ref">Référence de la transaction *</label><input id="d_ref" name="ref" required placeholder="ID de transaction, n° de virement…"></div>
+    </div><div class="err" id="formErr" hidden></div>
+    <div class="formbar"><span class="sp"></span><button type="button" class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary">Envoyer la déclaration</button></div></form>`,
+    async form => {
+      const pl = ABO.plans.find(x => x.code === form.plan.value), cyc = form.cycle.value, ref = form.ref.value.trim(), err = $('#formErr');
+      if (!ref) { err.hidden = false; err.textContent = 'Indiquez la référence de la transaction pour que l’équipe Ydila puisse la vérifier.'; return; }
+      if (pl.max_cites != null && ETAT.usage.cites > pl.max_cites || pl.max_lots != null && ETAT.usage.lots > pl.max_lots) { err.hidden = false; err.textContent = `Votre agence dépasse les limites de la formule ${pl.nom} (${ETAT.usage.cites} cité(s), ${ETAT.usage.lots} lots). Vos données seront conservées mais vous ne pourrez plus en ajouter. Choisissez une formule supérieure ou confirmez en cliquant à nouveau.`; if (!form.dataset.confirmed) { form.dataset.confirmed = '1'; return; } }
+      form.querySelector('button.primary').disabled = true;
+      const {error} = await SB.from('paiements_abonnement').insert({agence_id: AGENCE.id, plan_code: pl.code, cycle: cyc, montant: prixDe(pl, cyc), mode: form.mode.value, reference: ref, declare_par: SESSION.user.id});
+      if (error) { err.hidden = false; err.textContent = sbError(error); form.querySelector('button.primary').disabled = false; return; }
+      closeModal(); toast('Paiement déclaré. Votre abonnement sera prolongé dès sa validation par l’équipe Ydila.'); refreshAbo();
+    });
+  const upd = () => { const pl = ABO.plans.find(x => x.code === $('#d_plan').value), cyc = $('#d_cycle').value; $('#d_montant').textContent = nf.format(prixDe(pl, cyc)) + ' ' + ((ETAT && ETAT.devise_ydila) || 'FCFA'); $('#d_hint').textContent = cyc === 'annuel' && pl.mois_offerts_annuel ? `${pl.mois_offerts_annuel} mois offerts par rapport au paiement mensuel` : ''; };
+  $('#d_plan').addEventListener('change', upd); $('#d_cycle').addEventListener('change', upd); upd();
+}
+function openPlanEdit(code) {
+  const pl = CONSOLE.plans.find(x => x.code === code); if (!pl) return;
+  const n = v => v == null ? '' : v;
+  modal(`<form id="planForm" class="form" novalidate><h2>Formule ${esc(pl.nom)}</h2><div class="grid2">
+    <div class="fld half"><label for="p_nom">Nom affiché</label><input id="p_nom" name="nom" value="${esc(pl.nom)}"></div>
+    <div class="fld half"><label for="p_prix">Prix mensuel</label><input id="p_prix" name="prix" type="number" min="0" value="${n(pl.prix_mensuel)}"></div>
+    <div class="fld half"><label for="p_offerts">Mois offerts en paiement annuel</label><input id="p_offerts" name="offerts" type="number" min="0" max="11" value="${n(pl.mois_offerts_annuel)}"></div>
+    <div class="fld half"><label for="p_cites">Cités maximum</label><input id="p_cites" name="cites" type="number" min="0" value="${n(pl.max_cites)}" placeholder="Illimité"></div>
+    <div class="fld half"><label for="p_lots">Lots maximum</label><input id="p_lots" name="lots" type="number" min="0" value="${n(pl.max_lots)}" placeholder="Illimité"></div>
+    <div class="fld half"><label for="p_users">Utilisateurs maximum</label><input id="p_users" name="users" type="number" min="0" value="${n(pl.max_utilisateurs)}" placeholder="Illimité"></div>
+    <div class="fld"><label>Fonctions incluses</label><div style="display:flex;flex-wrap:wrap;gap:12px">${Object.entries(FONCTIONS).map(([k, l]) => `<label style="display:flex;gap:6px;align-items:center;font-weight:500;color:var(--ink)"><input type="checkbox" id="p_f_${k}" name="f_${k}" ${(pl.fonctions || []).includes(k) ? 'checked' : ''}>${esc(l)}</label>`).join('')}</div></div>
+    <div class="fld"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="p_actif" name="actif" ${pl.actif ? 'checked' : ''}> Proposée aux agences</label></div>
+    </div><span class="hint" style="font-size:12px;color:var(--muted)">Laissez une limite vide pour « illimité ».</span><div class="err" id="formErr" hidden></div>
+    <div class="formbar"><span class="sp"></span><button type="button" class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary">Enregistrer</button></div></form>`,
+    async form => {
+      const intOrNull = v => v.trim() === '' ? null : Math.max(0, Math.round(Number(v)));
+      const patch = {nom: form.nom.value.trim() || pl.nom, prix_mensuel: Math.max(0, Number(form.prix.value) || 0), mois_offerts_annuel: Math.min(11, Math.max(0, Math.round(Number(form.offerts.value) || 0))), max_cites: intOrNull(form.cites.value), max_lots: intOrNull(form.lots.value), max_utilisateurs: intOrNull(form.users.value), fonctions: Object.keys(FONCTIONS).filter(k => form['f_' + k].checked), actif: form.actif.checked};
+      const {error} = await SB.from('plans').update(patch).eq('code', code);
+      if (error) { const e = $('#formErr'); e.hidden = false; e.textContent = sbError(error); return; }
+      closeModal(); toast('Formule enregistrée.'); refreshConsole(); refreshAbo(); refreshEtat();
+    });
+}
+function openYParams() {
+  const p = CONSOLE.params;
+  modal(`<form id="yparamsForm" class="form" novalidate><h2>Paramètres Ydila</h2><div class="grid2">
+    <div class="fld half"><label for="y_devise">Devise des abonnements</label><input id="y_devise" name="devise" value="${esc(p.devise || 'FCFA')}"></div>
+    <div class="fld half"><label for="y_essai">Jours d’essai gratuit</label><input id="y_essai" name="essai" type="number" min="0" value="${num(p.jours_essai)}"></div>
+    <div class="fld half"><label for="y_grace">Jours de grâce après échéance</label><input id="y_grace" name="grace" type="number" min="0" value="${num(p.jours_grace)}"></div>
+    <div class="fld"><label for="y_instr">Instructions de paiement montrées aux agences</label><textarea id="y_instr" name="instr" rows="5" placeholder="Numéro Mobile money, coordonnées bancaires…">${esc(p.instructions_paiement || '')}</textarea></div>
+    </div><div class="err" id="formErr" hidden></div>
+    <div class="formbar"><span class="sp"></span><button type="button" class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary">Enregistrer</button></div></form>`,
+    async form => {
+      const {error} = await SB.from('parametres_ydila').update({devise: form.devise.value.trim() || 'FCFA', jours_essai: Math.max(0, Math.round(num(form.essai.value))), jours_grace: Math.max(0, Math.round(num(form.grace.value))), instructions_paiement: form.instr.value.trim()}).eq('id', 1);
+      if (error) { const e = $('#formErr'); e.hidden = false; e.textContent = sbError(error); return; }
+      closeModal(); toast('Paramètres enregistrés.'); refreshConsole(); refreshEtat();
+    });
+}
+async function importData(o) {
+  let n = 0;
+  for (const c of COLS) {
+    const arr = Array.isArray(o[c]) ? o[c] : [];
+    if (MODE === 'supabase') {
+      for (let i = 0; i < arr.length; i += 500) {
+        const rows = arr.slice(i, i + 500).map(r => { const {id, ...d} = r; return {agence_id: AGENCE.id, collection: c, id: String(id || uid()), data: d}; });
+        const {error} = await SB.from('enregistrements').upsert(rows);
+        if (error) { toast(sbError(error) + ` (${n} importé(s) avant l’erreur)`); await sbLoadAll(); refreshEtat(); schedule(); return; }
+        n += rows.length;
+      }
+    } else for (const r of arr) { if (!(await save(c, r))) return; n++; }
+  }
+  if (MODE === 'supabase') { await sbLoadAll(); refreshEtat(); }
+  if (o.config && !READONLY && isAdmin()) await saveCfg({devise: o.config.devise || CFG.devise, tel: o.config.tel || CFG.tel, adresse: o.config.adresse || CFG.adresse});
+  toast(`${n} enregistrement(s) importé(s).`); schedule();
 }
 
 /* ---------- interactions ---------- */
@@ -1066,6 +1516,25 @@ document.addEventListener('click', async ev => {
     case 'backup': { const o = {exporte: new Date().toISOString(), config: CFG}; COLS.forEach(c => o[c] = S[c]); download(`anayah-gestim-sauvegarde-${TODAY}.json`, JSON.stringify(o, null, 2)); break; }
     case 'purge': { const n = COLS.reduce((s, c) => s + S[c].filter(x => x.exemple).length, 0);
       confirmBox(`Supprimer les ${n} enregistrements d’exemple ? Vos propres saisies sont conservées.`, 'Supprimer les exemples', async () => { for (const c of COLS) for (const x of S[c].filter(x => x.exemple)) { if (!await remove(c, x.id)) return; } toast('Exemples supprimés.'); }); break; }
+    case 'upsell': upsellModal(UPSELL[el.dataset.f] || 'Cette fonction n’est pas incluse dans votre formule.'); break;
+    case 'goAbo': closeModal(); go('abonnement'); break;
+    case 'gate': showGate(el.dataset.v); break;
+    case 'reload': location.reload(); break;
+    case 'logout': if (SB) { await SB.auth.signOut(); } break;
+    case 'switchAg': modal(`<h2>Changer d’agence</h2><div class="list">${MES_AGENCES.map(ag => `<div class="li"><div class="t"><b>${esc(ag.nom)}</b><span>${esc(ROLES[ag.role] || '')}</span></div>${AGENCE && ag.id === AGENCE.id ? '<span class="chip s-info">Actuelle</span>' : `<button class="btn sm" data-a="pickAg" data-id="${ag.id}">Ouvrir</button>`}</div>`).join('')}</div><div class="formbar"><span class="sp"></span><button class="btn ghost" data-a="closeModal">Fermer</button></div>`); break;
+    case 'pickAg': { const ag = MES_AGENCES.find(x => x.id === id); closeModal(); if (ag) { UI.view = 'dashboard'; await selectAgence(ag); } break; }
+    case 'choosePlan': openDeclare(el.dataset.code); break;
+    case 'rmMember': { const self = id === SESSION?.user?.id;
+      confirmBox(self ? 'Quitter cette agence ? Vous perdrez l’accès à ses données.' : `Retirer ${esc(el.dataset.v)} de l’agence ? Ses saisies sont conservées.`, self ? 'Quitter' : 'Retirer', async () => { if (await rpc('retirer_membre', {a: AGENCE.id, p_user: id}, self ? 'Vous avez quitté l’agence.' : 'Membre retiré.')) { if (self) { SESSION_UID = null; enterSession(SESSION); } else refreshEquipe(); refreshEtat(); } }); break; }
+    case 'rmInvit': if (await rpc('annuler_invitation', {a: AGENCE.id, p_email: el.dataset.v}, 'Invitation annulée.')) { refreshEquipe(); refreshEtat(); } break;
+    case 'consoleRefresh': refreshConsole(); break;
+    case 'editPlan': openPlanEdit(el.dataset.code); break;
+    case 'editYParams': openYParams(); break;
+    case 'valider': { const p = CONSOLE.paiements.find(x => x.id === id); if (!p) break;
+      modal(`<h2>Valider le paiement</h2><p style="margin:0">${esc(p.agence?.nom || '')} · ${nf.format(p.montant)} ${esc(CONSOLE.params.devise || 'FCFA')} · réf. <span class="mono">${esc(p.reference || '')}</span></p><p style="margin:10px 0 0;color:var(--muted)">L’abonnement sera prolongé de ${p.cycle === 'annuel' ? '12 mois' : '1 mois'} sur la formule ${esc(CONSOLE.plans.find(x => x.code === p.plan_code)?.nom || p.plan_code)}.</p><div class="formbar"><span class="sp"></span><button class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary" data-a="confirmYes">Valider</button></div>`);
+      modalHandler = async () => { if (await rpc('valider_paiement', {p: id}, 'Paiement validé, abonnement prolongé.')) { refreshConsole(); refreshEtat(); refreshAbo(); } }; break; }
+    case 'rejeter': modal(`<form id="rejForm" class="form" novalidate><h2>Rejeter le paiement</h2><div class="grid2"><div class="fld"><label for="r_motif">Motif (visible par l’agence)</label><input id="r_motif" name="motif" placeholder="Référence introuvable, montant incomplet…"></div></div><div class="formbar"><span class="sp"></span><button type="button" class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary" style="background:var(--bad);border-color:var(--bad);color:#fff">Rejeter</button></div></form>`, async form => { if (await rpc('rejeter_paiement', {p: id, p_motif: form.motif.value}, 'Paiement rejeté.')) { closeModal(); refreshConsole(); } }); break;
+    case 'importPick': { const inp = $('#importFile'); if (inp) inp.click(); break; }
     case 'copy': { const v = el.dataset.v; try { await navigator.clipboard.writeText(v); toast('Copié.'); } catch (e) { toast(v); } break; }
   }
 });
@@ -1073,10 +1542,51 @@ document.addEventListener('keydown', ev => {
   if (ev.key === 'Escape') { if ($('#modalRoot').innerHTML) closeModal(); else if (UI.drawer) { UI.drawer = null; renderDrawer(); } }
   if (ev.key === 'Enter' && ev.target.classList && ev.target.classList.contains('tk')) ev.target.click();
 });
-document.addEventListener('submit', ev => {
+document.addEventListener('submit', async ev => {
   ev.preventDefault();
-  if (ev.target.id === 'cfgForm') { const f = ev.target; saveCfg({societe: f.societe.value.trim(), devise: f.devise.value.trim() || 'FCFA', tel: f.tel.value.trim(), adresse: f.adresse.value.trim()}).then(() => toast('Paramètres enregistrés.')); return; }
-  if (modalHandler) modalHandler(ev.target);
+  const f = ev.target, id = f.id;
+  if (id === 'cfgForm') { if ((await saveCfg({societe: f.societe.value.trim(), devise: f.devise.value.trim() || 'FCFA', tel: f.tel.value.trim(), adresse: f.adresse.value.trim()})) !== false) toast('Paramètres enregistrés.'); return; }
+  const btn = f.querySelector('button.primary'); const busy = b => { if (btn) btn.disabled = b; };
+  if (id === 'loginForm') { busy(true); const {error} = await SB.auth.signInWithPassword({email: f.email.value.trim(), password: f.password.value}); busy(false); if (error) gateMsg(authErr(error)); return; }
+  if (id === 'signupForm') {
+    if (f.password.value.length < 8) { gateMsg('Mot de passe trop court : 8 caractères minimum.'); return; }
+    if (f.password.value !== f.confirm.value) { gateMsg('Les deux mots de passe ne correspondent pas.'); return; }
+    busy(true); const {data, error} = await SB.auth.signUp({email: f.email.value.trim(), password: f.password.value, options: {emailRedirectTo: location.origin + location.pathname}}); busy(false);
+    if (error) { gateMsg(authErr(error)); return; }
+    if (!data.session) gateMsg(`Compte créé. Ouvrez le lien de confirmation envoyé à ${f.email.value.trim()}, puis connectez-vous.`, true);
+    return;
+  }
+  if (id === 'resetForm') { busy(true); const {error} = await SB.auth.resetPasswordForEmail(f.email.value.trim(), {redirectTo: location.origin + location.pathname}); busy(false); if (error) gateMsg(authErr(error)); else gateMsg('Si un compte existe pour cette adresse, un lien vient de lui être envoyé.', true); return; }
+  if (id === 'newpassForm') {
+    if (f.password.value.length < 8) { gateMsg('Mot de passe trop court : 8 caractères minimum.'); return; }
+    if (f.password.value !== f.confirm.value) { gateMsg('Les deux mots de passe ne correspondent pas.'); return; }
+    busy(true); const {error} = await SB.auth.updateUser({password: f.password.value}); busy(false);
+    if (error) { gateMsg(authErr(error)); return; }
+    RECOVERY = false; try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    const {data} = await SB.auth.getSession(); SESSION_UID = null; if (data.session) enterSession(data.session); else showGate('login');
+    return;
+  }
+  if (id === 'onboardForm') {
+    busy(true); const {data, error} = await SB.rpc('creer_agence', {p_nom: f.nom.value.trim(), p_devise: f.devise.value.trim() || 'FCFA'}); busy(false);
+    if (error) { gateMsg(sbError(error)); return; }
+    UI.view = 'dashboard'; await loadAgences(data); return;
+  }
+  if (id === 'inviteForm') {
+    busy(true); const r = await rpc('inviter_membre', {a: AGENCE.id, p_email: f.email.value.trim(), p_role: f.role.value}); busy(false);
+    if (r) { toast(r === 'ajoute' ? 'Utilisateur ajouté à l’agence.' : 'Invitation enregistrée : l’accès sera donné dès que la personne créera son compte avec cette adresse.'); f.reset(); refreshEquipe(); refreshEtat(); }
+    return;
+  }
+  if (modalHandler) modalHandler(f);
+});
+document.addEventListener('change', ev => {
+  if (ev.target.id !== 'importFile' || !ev.target.files[0]) return;
+  const file = ev.target.files[0]; ev.target.value = '';
+  file.text().then(t => {
+    let o; try { o = JSON.parse(t); } catch (e) { toast('Ce fichier n’est pas une sauvegarde Anayah Gestim valide.'); return; }
+    const n = COLS.reduce((s, c) => s + (Array.isArray(o[c]) ? o[c].length : 0), 0);
+    if (!n) { toast('Aucun enregistrement trouvé dans ce fichier.'); return; }
+    confirmBox(`Importer ${n} enregistrement(s) depuis « ${esc(file.name)} » ? Ceux qui ont le même identifiant seront remplacés.`, 'Importer', () => importData(o));
+  });
 });
 let inT;
 document.addEventListener('input', ev => {
@@ -1088,6 +1598,10 @@ document.addEventListener('input', ev => {
 
 /* ---------- démarrage ---------- */
 async function boot() {
+  if (SBCFG.supabaseUrl && SBCFG.supabaseAnonKey) {
+    if (window.supabase && window.supabase.createClient) { try { await sbStart(); return; } catch (e) { console.error(e); } }
+    toast('Service en ligne injoignable : passage en mode local.');
+  }
   render();
   const use = n => (window.claude && typeof window.claude.use === 'function') ? window.claude.use(n).catch(() => null) : Promise.resolve(null);
   use('downloads').then(d => { DL = d; });

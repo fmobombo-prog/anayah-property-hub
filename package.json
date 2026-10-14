@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "sh dev-server.sh",
-    "build": "mkdir -p dist && cp index.html dist/index.html",
-    "build:dev": "mkdir -p dist && cp index.html dist/index.html"
+    "build": "mkdir -p dist && cp index.html config.js dist/",
+    "build:dev": "mkdir -p dist && cp index.html config.js dist/"
   }
 }
