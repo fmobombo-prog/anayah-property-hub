@@ -28,7 +28,7 @@ insert into public.plans (code, nom, prix_mensuel, mois_offerts_annuel, max_cite
   ('entreprise', 'Entreprise', 200000, 2, null, null, null, '{exports,quittances,syndic,support_prioritaire}', 3)
 on conflict (code) do nothing;
 
-create table if not exists public.parametres_ydila (
+create table if not exists public.parametres (
   id                     int primary key default 1 check (id = 1),
   devise                 text not null default 'FCFA',
   jours_essai            int not null default 30,
@@ -36,7 +36,7 @@ create table if not exists public.parametres_ydila (
   instructions_paiement  text not null default
     'Payez par Mobile money ou par virement, puis déclarez le paiement avec la référence de la transaction. Votre abonnement est prolongé dès validation par l''administrateur.'
 );
-insert into public.parametres_ydila (id) values (1) on conflict do nothing;
+insert into public.parametres (id) values (1) on conflict do nothing;
 
 create table if not exists public.super_admins (
   user_id uuid primary key references auth.users on delete cascade
@@ -131,7 +131,7 @@ language sql stable security definer set search_path = public as $$
     when current_date <= greatest(ag.fin_essai, coalesce(ag.paye_jusqu_au, ag.fin_essai)) + p.jours_grace
       then 'grace'
     else 'expire' end
-  from agences ag cross join parametres_ydila p
+  from agences ag cross join parametres p
   where ag.id = a;
 $$;
 
@@ -150,7 +150,7 @@ $$;
 -- 6. Règles d'accès (Row Level Security)
 -- ---------------------------------------------------------------------
 alter table public.plans                enable row level security;
-alter table public.parametres_ydila     enable row level security;
+alter table public.parametres     enable row level security;
 alter table public.super_admins         enable row level security;
 alter table public.agences              enable row level security;
 alter table public.membres              enable row level security;
@@ -163,10 +163,10 @@ create policy plans_lecture on public.plans for select using (true);
 drop policy if exists plans_admin on public.plans;
 create policy plans_admin on public.plans for update using (est_super_admin()) with check (est_super_admin());
 
-drop policy if exists params_lecture on public.parametres_ydila;
-create policy params_lecture on public.parametres_ydila for select to authenticated using (true);
-drop policy if exists params_admin on public.parametres_ydila;
-create policy params_admin on public.parametres_ydila for update using (est_super_admin()) with check (est_super_admin());
+drop policy if exists params_lecture on public.parametres;
+create policy params_lecture on public.parametres for select to authenticated using (true);
+drop policy if exists params_admin on public.parametres;
+create policy params_admin on public.parametres for update using (est_super_admin()) with check (est_super_admin());
 
 drop policy if exists sa_lecture on public.super_admins;
 create policy sa_lecture on public.super_admins for select using (user_id = auth.uid());
@@ -243,7 +243,7 @@ begin
   if exists (select 1 from agences where cree_par = auth.uid()) and not est_super_admin() then
     raise exception 'Vous avez déjà créé une agence : une seule période d''essai est offerte par compte.' using errcode = 'P0001';
   end if;
-  select jours_essai into essai from parametres_ydila where id = 1;
+  select jours_essai into essai from parametres where id = 1;
   insert into agences (nom, devise, plan_code, fin_essai, cree_par)
     values (trim(p_nom), coalesce(nullif(trim(p_devise), ''), 'FCFA'), 'pro', current_date + essai, auth.uid())
     returning id into nid;
@@ -336,7 +336,7 @@ begin
     'paye_jusqu_au', ag.paye_jusqu_au,
     'fin_droits',    greatest(ag.fin_essai, coalesce(ag.paye_jusqu_au, ag.fin_essai)),
     'jours_grace',   pr.jours_grace,
-    'devise_ydila',  pr.devise,
+    'devise',  pr.devise,
     'instructions',  pr.instructions_paiement,
     'plan',          to_json(p),
     'usage', json_build_object(
@@ -344,7 +344,7 @@ begin
       'lots',         (select count(*) from enregistrements where agence_id = a and collection = 'lots'),
       'utilisateurs', (select count(*) from membres where agence_id = a) + (select count(*) from invitations where agence_id = a)))
   into r
-  from agences ag join plans p on p.code = ag.plan_code cross join parametres_ydila pr
+  from agences ag join plans p on p.code = ag.plan_code cross join parametres pr
   where ag.id = a;
   return r;
 end $$;
