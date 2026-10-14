@@ -952,6 +952,73 @@ function releve(v) {
   <h3>Paiements reçus</h3><table><tr><th>Date</th><th>Mode</th><th>Référence</th><th class="n">Montant</th></tr>${(v.paiements || []).map(p => `<tr><td>${fmtDate(p.date)}</td><td>${esc(p.mode || '')}</td><td>${esc(p.ref || '')}</td><td class="n">${money(p.montant)}</td></tr>`).join('')}</table>`);
 }
 
+/* ---------- manuel de l'utilisateur ---------- */
+function openAide() {
+  modal(`<div class="man">
+  <h2>Manuel de l’utilisateur</h2>
+  <p>Bienvenue dans <b>Anayah Gestim</b>, votre outil de gestion immobilière : des ventes de terrains à la vie quotidienne des cités. Ce manuel présente chaque module et les gestes essentiels.</p>
+
+  <h3>Prise en main</h3>
+  <ul>
+    <li>Naviguez avec le <b>menu latéral</b> (en haut sur téléphone).</li>
+    <li>Chaque liste propose un bouton <b>+ Nouveau</b> pour ajouter un élément, une <b>recherche</b> et des <b>filtres</b>.</li>
+    <li>Cliquez sur une ligne pour ouvrir sa <b>fiche détaillée</b> (panneau latéral), puis sur <b>Modifier</b> pour la corriger.</li>
+    <li>La touche <b>Échap</b> ferme les fenêtres et panneaux.</li>
+  </ul>
+
+  <h3>Tableau de bord</h3>
+  <p>Vue d’ensemble : encaissements du mois, reste à encaisser, loyers attendus et reçus, taux d’occupation, graphique des encaissements sur 12 mois et liste des <b>clients à relancer</b> (retards de paiement).</p>
+
+  <h3>Cités &amp; programmes</h3>
+  <p>Créez vos cités (étapes : étude &amp; lotissement, viabilisation, commercialisation, livrée). La fiche d’une cité affiche le <b>plan de lotissement</b> : chaque îlot est coloré selon le statut de ses lots.</p>
+
+  <h3>Lots &amp; terrains</h3>
+  <p>Chaque lot a une référence, un îlot, une surface, un prix (le prix au m² est calculé), un titre foncier et un statut. Le statut se met à jour <b>automatiquement</b> : « Vendu » après une vente, « Loué » quand un bail est actif, « Disponible » si la vente ou le bail est supprimé.</p>
+
+  <h3>Ventes de terrains</h3>
+  <ul>
+    <li>Vente <b>au comptant</b> ou <b>échelonnée</b> : indiquez acompte, nombre d’échéances et date de première mensualité — l’<b>échéancier est calculé</b> automatiquement.</li>
+    <li>Depuis la fiche de la vente, <b>enregistrez les paiements</b> reçus : les échéances passent de « À venir » à « Payée », « Partielle » ou « En retard ».</li>
+    <li>Téléchargez le <b>relevé de compte</b> de l’acquéreur (bouton dédié dans la fiche).</li>
+  </ul>
+
+  <h3>Locations</h3>
+  <ul>
+    <li>Créez un <b>bail</b> : lot, locataire, loyer, charges, caution, durée.</li>
+    <li>Les loyers sont suivis <b>mois par mois</b> ; les impayés apparaissent en rouge et remontent au tableau de bord.</li>
+    <li>Depuis la fiche du bail : <b>Encaisser un loyer</b> (le mois et le montant sont pré-remplis) et télécharger la <b>quittance de loyer</b>.</li>
+  </ul>
+
+  <h3>Espaces communs</h3>
+  <p>Salles, piscines, parkings… Définissez un tarif et enregistrez les <b>réservations</b>. L’application <b>bloque les conflits de créneaux</b> : deux réservations ne peuvent pas se chevaucher le même jour.</p>
+
+  <h3>Syndic &amp; charges</h3>
+  <p>Définissez les <b>cotisations</b> par lot, suivez le taux de recouvrement, enregistrez les <b>dépenses communes</b> et consultez le <b>solde de chaque cité</b>.</p>
+
+  <h3>Maintenance</h3>
+  <p>Suivez les interventions par étapes : <b>Signalée → Planifiée → En cours → Terminée</b> (flèches pour faire avancer). Renseignez priorité, corps de métier, prestataire et coût.</p>
+
+  <h3>Clients &amp; tiers</h3>
+  <p>Acquéreurs, locataires, propriétaires, prestataires… La liste affiche le <b>montant dû</b> par chacun. La fiche regroupe ses ventes, baux et paiements.</p>
+
+  <h3>Paramètres</h3>
+  <ul>
+    <li>Réglez la <b>devise</b> et les <b>coordonnées de l’agence</b> (utilisées sur quittances et relevés).</li>
+    <li><b>Sauvegarde complète</b> : téléchargez toutes vos données au format JSON. Faites-le régulièrement.</li>
+    <li><b>Supprimer les exemples</b> : retire les données de démonstration sans toucher à vos saisies.</li>
+  </ul>
+
+  <h3>Exports et documents</h3>
+  <p>Chaque liste s’exporte en <b>CSV</b> (séparateur « ; », compatible Excel). Quittances et relevés se téléchargent en HTML, prêts à imprimer ou enregistrer en PDF.</p>
+
+  <h3>Vos données</h3>
+  <p>Selon le mode d’ouverture, les données sont soit <b>synchronisées et partagées</b> avec votre équipe (mention « Données synchronisées » en bas du menu), soit <b>conservées dans ce navigateur</b> (« Mode local »). En mode local, pensez à la sauvegarde JSON.</p>
+
+  <div class="formbar"><span class="sp"></span><button class="btn primary" data-a="closeModal">Fermer</button></div>
+</div>`);
+  $('#modalRoot .mbox')?.classList.add('wide');
+}
+
 /* ---------- interactions ---------- */
 let toastT;
 function toast(m) { $('#toastRoot').innerHTML = `<div class="toast" role="status">${esc(m)}</div>`; clearTimeout(toastT); toastT = setTimeout(() => $('#toastRoot').innerHTML = '', 3200); }
