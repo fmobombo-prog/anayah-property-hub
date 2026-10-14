@@ -1029,6 +1029,7 @@ document.addEventListener('click', async ev => {
   if (el.tagName === 'BUTTON' || el.closest('tr') || el.classList.contains('tk')) ev.stopPropagation();
   switch (a) {
     case 'go': go(el.dataset.v); break;
+    case 'aide': openAide(); break;
     case 'new': openForm(el.dataset.c, el.dataset.pre ? JSON.parse(el.dataset.pre) : null); break;
     case 'edit': { const r = byId(el.dataset.c, id); if (r) { if (READONLY) { toast('Votre accès est en lecture seule.'); return; } openForm(el.dataset.c, r); } break; }
     case 'open': UI.drawer = {k: el.dataset.k, id}; renderDrawer(); break;
