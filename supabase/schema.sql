@@ -159,7 +159,7 @@ alter table public.paiements_abonnement enable row level security;
 alter table public.enregistrements      enable row level security;
 
 drop policy if exists plans_lecture on public.plans;
-create policy plans_lecture on public.plans for select using (true);
+create policy plans_lecture on public.plans for select to authenticated using (true);
 drop policy if exists plans_admin on public.plans;
 create policy plans_admin on public.plans for update using (est_super_admin()) with check (est_super_admin());
 
