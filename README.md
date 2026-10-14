@@ -1,6 +1,6 @@
 # Anayah Gestim
 
-Application de gestion immobilière complète, des ventes de terrains à la vie quotidienne des cités. Elle est proposée aux agences sous forme d'abonnement selon le **modèle Ydila**, avec des données conservées en ligne.
+Application de gestion immobilière complète, des ventes de terrains à la vie quotidienne des cités. Elle est proposée aux agences sous forme d'abonnement, avec des données conservées en ligne.
 
 ## Modules de gestion
 
@@ -16,7 +16,7 @@ Application de gestion immobilière complète, des ventes de terrains à la vie 
 | | Maintenance | Interventions par étape, priorité, prestataire, coût |
 | Contacts | Clients & tiers | Acquéreurs, locataires, propriétaires, prestataires, avec le montant dû par chacun |
 
-## Modèle d'abonnement Ydila
+## Modèle d'abonnement
 
 Les agences clientes s'inscrivent, créent leur agence et paient un abonnement.
 
@@ -28,13 +28,13 @@ Les agences clientes s'inscrivent, créent leur agence et paient un abonnement.
 
 - **Essai gratuit** : 30 jours avec toutes les fonctions Pro, un seul essai par compte.
 - **Paiement annuel** : 12 mois pour le prix de 10 (2 mois offerts).
-- **Paiement** : l'agence paie par Mobile money ou virement, puis déclare le paiement dans « Abonnement Ydila » avec la référence de la transaction. L'équipe Ydila vérifie et valide le paiement dans la **Console Ydila**, ce qui prolonge l'abonnement automatiquement.
+- **Paiement** : l'agence paie par Mobile money ou virement, puis déclare le paiement dans « Abonnement » avec la référence de la transaction. L'administrateur vérifie et valide le paiement dans la **Console**, ce qui prolonge l'abonnement automatiquement.
 - **Échéance** : 7 jours de grâce, puis l'agence passe en **lecture seule**. Ses données restent consultables, exportables (sauvegarde JSON) et ne sont jamais supprimées.
 - **Rôles** : Administrateur (tout, abonnement et équipe), Gestionnaire (saisie), Consultation (lecture seule).
 
-Les prix, limites, fonctions, durées d'essai et de grâce et les instructions de paiement se modifient dans la Console Ydila, sans toucher au code.
+Les prix, limites, fonctions, durées d'essai et de grâce et les instructions de paiement se modifient dans la Console, sans toucher au code.
 
-Les limites et droits sont appliqués **par le serveur** (règles d'accès Supabase) et pas seulement par l'interface. Les données de gestion d'une agence ne sont visibles que par ses membres : l'équipe Ydila voit les abonnements et les volumes, pas le contenu.
+Les limites et droits sont appliqués **par le serveur** (règles d'accès Supabase) et pas seulement par l'interface. Les données de gestion d'une agence ne sont visibles que par ses membres : l'administrateur voit les abonnements et les volumes, pas le contenu.
 
 ## Mise en service
 
@@ -61,7 +61,7 @@ La clé `anon` est conçue pour être publique. N'utilisez jamais la clé `servi
 
 Sur GitHub : **Settings → Pages → Deploy from a branch → `main` / racine**.
 
-### 4. Devenir administrateur Ydila
+### 4. Devenir super administrateur
 
 Créez votre compte dans l'application, confirmez votre adresse, puis exécutez dans le SQL Editor de Supabase (avec votre adresse) :
 
@@ -70,7 +70,7 @@ insert into public.super_admins (user_id)
 select id from auth.users where email = 'votre.adresse@exemple.com';
 ```
 
-Reconnectez-vous : le menu **Console Ydila** apparaît. Commencez par **Paramètres Ydila** pour saisir vos instructions de paiement (numéro Mobile money, coordonnées bancaires).
+Reconnectez-vous : le menu **Console** apparaît. Commencez par **Paramètres** pour saisir vos instructions de paiement (numéro Mobile money, coordonnées bancaires).
 
 ## Mode local
 
