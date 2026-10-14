@@ -96,6 +96,161 @@ export type Database = {
           },
         ]
       }
+      factures: {
+        Row: {
+          agence_id: string
+          avoir_de: string | null
+          client_adresse: string | null
+          client_assujetti: boolean
+          client_email: string | null
+          client_niu: string | null
+          client_nom: string
+          client_rccm: string | null
+          client_tel: string | null
+          client_type: string
+          cree_le: string
+          cree_par: string | null
+          date_facture: string
+          id: string
+          lignes: Json
+          mode_reglement: string | null
+          numero: string
+          objet: string | null
+          origine: string
+          origine_ref: string | null
+          sfec_date_certification: string | null
+          sfec_derniere_tentative: string | null
+          sfec_environnement: string | null
+          sfec_erreur: Json | null
+          sfec_qr_code: string | null
+          sfec_signature: string | null
+          sfec_signature_courte: string | null
+          sfec_statut: string
+          sfec_tentatives: number
+          statut: string
+          total_ht: number
+          total_ttc: number
+          total_tva: number
+          type: string
+        }
+        Insert: {
+          agence_id: string
+          avoir_de?: string | null
+          client_adresse?: string | null
+          client_assujetti?: boolean
+          client_email?: string | null
+          client_niu?: string | null
+          client_nom: string
+          client_rccm?: string | null
+          client_tel?: string | null
+          client_type?: string
+          cree_le?: string
+          cree_par?: string | null
+          date_facture?: string
+          id?: string
+          lignes?: Json
+          mode_reglement?: string | null
+          numero: string
+          objet?: string | null
+          origine?: string
+          origine_ref?: string | null
+          sfec_date_certification?: string | null
+          sfec_derniere_tentative?: string | null
+          sfec_environnement?: string | null
+          sfec_erreur?: Json | null
+          sfec_qr_code?: string | null
+          sfec_signature?: string | null
+          sfec_signature_courte?: string | null
+          sfec_statut?: string
+          sfec_tentatives?: number
+          statut?: string
+          total_ht?: number
+          total_ttc?: number
+          total_tva?: number
+          type?: string
+        }
+        Update: {
+          agence_id?: string
+          avoir_de?: string | null
+          client_adresse?: string | null
+          client_assujetti?: boolean
+          client_email?: string | null
+          client_niu?: string | null
+          client_nom?: string
+          client_rccm?: string | null
+          client_tel?: string | null
+          client_type?: string
+          cree_le?: string
+          cree_par?: string | null
+          date_facture?: string
+          id?: string
+          lignes?: Json
+          mode_reglement?: string | null
+          numero?: string
+          objet?: string | null
+          origine?: string
+          origine_ref?: string | null
+          sfec_date_certification?: string | null
+          sfec_derniere_tentative?: string | null
+          sfec_environnement?: string | null
+          sfec_erreur?: Json | null
+          sfec_qr_code?: string | null
+          sfec_signature?: string | null
+          sfec_signature_courte?: string | null
+          sfec_statut?: string
+          sfec_tentatives?: number
+          statut?: string
+          total_ht?: number
+          total_ttc?: number
+          total_tva?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factures_agence_id_fkey"
+            columns: ["agence_id"]
+            isOneToOne: false
+            referencedRelation: "agences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_avoir_de_fkey"
+            columns: ["avoir_de"]
+            isOneToOne: false
+            referencedRelation: "factures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      factures_compteurs: {
+        Row: {
+          agence_id: string
+          annee: number
+          dernier: number
+          prefixe: string
+        }
+        Insert: {
+          agence_id: string
+          annee: number
+          dernier?: number
+          prefixe: string
+        }
+        Update: {
+          agence_id?: string
+          annee?: number
+          dernier?: number
+          prefixe?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factures_compteurs_agence_id_fkey"
+            columns: ["agence_id"]
+            isOneToOne: false
+            referencedRelation: "agences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           agence_id: string
@@ -289,6 +444,101 @@ export type Database = {
         }
         Relationships: []
       }
+      sfec_config: {
+        Row: {
+          actif: boolean
+          agence_id: string
+          cle_fin: string | null
+          cle_secret_id: string | null
+          environnement: string
+          maj_le: string
+          maj_par: string | null
+        }
+        Insert: {
+          actif?: boolean
+          agence_id: string
+          cle_fin?: string | null
+          cle_secret_id?: string | null
+          environnement?: string
+          maj_le?: string
+          maj_par?: string | null
+        }
+        Update: {
+          actif?: boolean
+          agence_id?: string
+          cle_fin?: string | null
+          cle_secret_id?: string | null
+          environnement?: string
+          maj_le?: string
+          maj_par?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sfec_config_agence_id_fkey"
+            columns: ["agence_id"]
+            isOneToOne: true
+            referencedRelation: "agences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sfec_journal: {
+        Row: {
+          agence_id: string | null
+          auteur_id: string | null
+          cree_le: string
+          environnement: string | null
+          facture_id: string | null
+          id: number
+          methode: string | null
+          reponse: Json | null
+          requete: Json | null
+          statut_http: number | null
+          url: string | null
+        }
+        Insert: {
+          agence_id?: string | null
+          auteur_id?: string | null
+          cree_le?: string
+          environnement?: string | null
+          facture_id?: string | null
+          id?: number
+          methode?: string | null
+          reponse?: Json | null
+          requete?: Json | null
+          statut_http?: number | null
+          url?: string | null
+        }
+        Update: {
+          agence_id?: string | null
+          auteur_id?: string | null
+          cree_le?: string
+          environnement?: string | null
+          facture_id?: string | null
+          id?: number
+          methode?: string | null
+          reponse?: Json | null
+          requete?: Json | null
+          statut_http?: number | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sfec_journal_agence_id_fkey"
+            columns: ["agence_id"]
+            isOneToOne: false
+            referencedRelation: "agences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sfec_journal_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "factures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       super_admins: {
         Row: {
           user_id: string
@@ -317,8 +567,14 @@ export type Database = {
         Args: { p_devise?: string; p_nom: string }
         Returns: string
       }
+      emettre_avoir: { Args: { f: string; p_motif: string }; Returns: string }
+      emettre_facture: { Args: { a: string; p: Json }; Returns: string }
       est_super_admin: { Args: never; Returns: boolean }
       etat_agence: { Args: { a: string }; Returns: Json }
+      facture_numero: {
+        Args: { a: string; d: string; pre: string }
+        Returns: string
+      }
       inviter_membre: {
         Args: { a: string; p_email: string; p_role: string }
         Returns: string
@@ -343,6 +599,23 @@ export type Database = {
         Returns: undefined
       }
       role_dans: { Args: { a: string }; Returns: string }
+      sfec_certifier: { Args: { f: string }; Returns: Json }
+      sfec_controler: { Args: { f: string }; Returns: string[] }
+      sfec_http: {
+        Args: {
+          _chemin: string
+          _corps: Json
+          _methode: string
+          a: string
+          f: string
+        }
+        Returns: Json
+      }
+      sfec_payload: { Args: { f: string }; Returns: Json }
+      sfec_regler: {
+        Args: { a: string; p_actif: boolean; p_cle: string; p_env: string }
+        Returns: undefined
+      }
       statut_agence: { Args: { a: string }; Returns: string }
       valider_paiement: { Args: { p: string }; Returns: undefined }
     }
