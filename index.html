@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Anayah Gestim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: dark cadastral sidebar + working canvas; lots drawn as parcels, status carried by colour chips */
+:root{
+  --paper:#eef1ee;--surface:#ffffff;--sunk:#f5f7f5;--ink:#15211f;--muted:#5b6965;--line:#d8dfdb;
+  --accent:#1d5b57;--accent-2:#e2eeec;--on-accent:#ffffff;--brass:#9c6d14;--brass-2:#f4ead6;
+  --side:#11302d;--side-ink:#e8f0ee;--side-muted:#8fb0ab;--side-hover:#1a403c;
+  --ok:#2b7a4b;--ok-2:#e1f0e6;--warn:#a2660e;--warn-2:#f7ebd4;--bad:#b23b33;--bad-2:#f8e0dd;
+  --info:#2c5d9a;--info-2:#e0e9f5;--violet:#6a4c9e;--violet-2:#ebe5f5;--mut:#6c7774;--mut-2:#e8ecea;
+  --scrim:rgba(10,20,19,.42);--shadow:0 1px 2px rgba(16,32,30,.06),0 10px 30px rgba(16,32,30,.08);
+  --f-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --f-body:'Public Sans','Segoe UI',system-ui,-apple-system,sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0e1413;--surface:#151d1c;--sunk:#111817;--ink:#e3ebe8;--muted:#93a49f;--line:#27332f;
+  --accent:#5bb2a6;--accent-2:#173533;--on-accent:#04201c;--brass:#d6a84a;--brass-2:#3a2e14;
+  --side:#0a100f;--side-ink:#e3ebe8;--side-muted:#7c938e;--side-hover:#16211f;
+  --ok:#5cc086;--ok-2:#173726;--warn:#e2a84c;--warn-2:#3b2c12;--bad:#ec7a6e;--bad-2:#3d1d1a;
+  --info:#7eaae8;--info-2:#18283e;--violet:#ab92e3;--violet-2:#2a2140;--mut:#8d9a96;--mut-2:#202a28;
+  --scrim:rgba(0,0,0,.6);--shadow:0 1px 2px rgba(0,0,0,.4);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0e1413;--surface:#151d1c;--sunk:#111817;--ink:#e3ebe8;--muted:#93a49f;--line:#27332f;
+  --accent:#5bb2a6;--accent-2:#173533;--on-accent:#04201c;--brass:#d6a84a;--brass-2:#3a2e14;
+  --side:#0a100f;--side-ink:#e3ebe8;--side-muted:#7c938e;--side-hover:#16211f;
+  --ok:#5cc086;--ok-2:#173726;--warn:#e2a84c;--warn-2:#3b2c12;--bad:#ec7a6e;--bad-2:#3d1d1a;
+  --info:#7eaae8;--info-2:#18283e;--violet:#ab92e3;--violet-2:#2a2140;--mut:#8d9a96;--mut-2:#202a28;
+  --scrim:rgba(0,0,0,.6);--shadow:0 1px 2px rgba(0,0,0,.4);color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--f-body);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:-.01em;text-wrap:balance;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num,td.n,.mono{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--f-mono);font-size:.86em}
+
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100%}
+.side{background:var(--side);color:var(--side-ink);padding:22px 14px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;gap:10px;align-items:center;padding:0 8px}
+.brand svg{flex:none}
+.brand b{font-family:var(--f-display);font-size:20px;letter-spacing:-.01em;line-height:1}
+.brand small{display:block;color:var(--side-muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+.nav{display:flex;flex-direction:column;gap:18px}
+.nav .grp{display:flex;flex-direction:column;gap:2px}
+.nav .gl{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--side-muted);padding:0 10px 4px}
+.nav button{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--side-ink);font-size:14px;opacity:.86}
+.nav button:hover{background:var(--side-hover);opacity:1}
+.nav button[aria-current="page"]{background:var(--side-hover);opacity:1;box-shadow:inset 3px 0 0 var(--brass)}
+.nav button:focus-visible{outline:2px solid var(--brass)}
+.nav svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.side .foot{margin-top:auto;font-size:12px;color:var(--side-muted);padding:0 10px;display:flex;flex-direction:column;gap:4px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--ok)}
+.dot.local{background:var(--warn)}
+
+.main{min-width:0;padding-inline:clamp(16px,3vw,40px);padding-block:28px 60px;display:flex;flex-direction:column;gap:22px}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--brass);font-weight:700;margin:0 0 4px}
+.top h1{font-size:clamp(24px,3vw,32px)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.banner{border:1px solid var(--line);background:var(--warn-2);color:var(--ink);padding:10px 14px;border-radius:10px;font-size:13.5px}
+
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:9px;cursor:pointer;font-weight:600;font-size:13.5px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:7px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.link{all:unset;cursor:pointer;color:var(--accent);font-weight:600}
+.link:hover{text-decoration:underline}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;min-width:0}
+.panel h2{font-size:17px}
+.ph{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.ph p{margin:0;color:var(--muted);font-size:13px}
+.grid{display:grid;gap:16px}
+.g-kpi{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.g-2{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.g-cards{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+@media (max-width:1050px){.g-2{grid-template-columns:minmax(0,1fr)}}
+
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.kpi .v{font-family:var(--f-display);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi .s{font-size:12.5px;color:var(--muted)}
+.kpi.hl{background:var(--side);border-color:var(--side);color:var(--side-ink)}
+.kpi.hl .l,.kpi.hl .s{color:var(--side-muted)}
+
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap;background:var(--mut-2);color:var(--mut)}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.s-ok{background:var(--ok-2);color:var(--ok)}.s-warn{background:var(--warn-2);color:var(--warn)}.s-bad{background:var(--bad-2);color:var(--bad)}
+.s-info{background:var(--info-2);color:var(--info)}.s-violet{background:var(--violet-2);color:var(--violet)}.s-mut{background:var(--mut-2);color:var(--mut)}
+.ex{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--brass);border:1px dashed var(--brass);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:middle}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--sunk);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;white-space:nowrap}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover td{background:var(--sunk)}
+td .sub{display:block;color:var(--muted);font-size:12px}
+.bar{height:6px;border-radius:4px;background:var(--mut-2);overflow:hidden;min-width:70px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filters input,.filters select{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 10px;font-size:13.5px;min-width:0}
+.filters input{flex:1 1 200px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{all:unset;cursor:pointer;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted)}
+.tabs button[aria-pressed="true"]{background:var(--accent-2);color:var(--accent)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;cursor:pointer;text-align:left;min-width:0}
+.card:hover{border-color:var(--muted)}
+.card h3{font-size:17px}
+.card .meta{color:var(--muted);font-size:13px}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.kv div{display:flex;flex-direction:column}
+.kv span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kv b{font-variant-numeric:tabular-nums;font-size:14.5px}
+.stack{display:flex;height:8px;border-radius:5px;overflow:hidden;background:var(--mut-2)}
+.stack i{display:block;height:100%}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.f-Disponible{background:var(--ok)}.f-Réservé{background:var(--warn)}.f-Vendu{background:var(--info)}.f-Loué{background:var(--violet)}.f-Indisponible{background:var(--mut)}
+
+.list{display:flex;flex-direction:column}
+.li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.li:last-child{border-bottom:0}
+.li .t{min-width:0}
+.li .t b{display:block;font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.li .t span{color:var(--muted);font-size:12.5px}
+.empty{padding:28px 18px;text-align:center;color:var(--muted);font-size:14px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty b{color:var(--ink);font-family:var(--f-display);font-size:17px}
+
+.chart svg{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-size:11px;font-family:var(--f-body)}
+.chart .gl{stroke:var(--line)}
+.c-v{fill:var(--accent)}.c-l{fill:var(--brass)}.c-a{fill:var(--info)}
+.lg-v{background:var(--accent)}.lg-l{background:var(--brass)}.lg-a{background:var(--info)}
+
+.kanban{display:grid;grid-template-columns:repeat(4,minmax(240px,1fr));gap:14px;overflow-x:auto;padding-bottom:6px}
+.col{background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.col h3{font-size:14px;display:flex;justify-content:space-between}
+.tk{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+.tk b{font-size:14px;overflow-wrap:anywhere}
+.tk .meta{font-size:12px;color:var(--muted)}
+.tk .row{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}
+
+.plan{display:flex;flex-direction:column;gap:10px}
+.ilot{display:flex;gap:10px;align-items:flex-start}
+.ilot>span{font-family:var(--f-mono);font-size:11px;color:var(--muted);width:56px;flex:none;padding-top:8px}
+.plots{display:flex;flex-wrap:wrap;gap:4px}
+.plot{all:unset;cursor:pointer;width:44px;height:34px;border-radius:4px;display:grid;place-items:center;font-family:var(--f-mono);font-size:10px;color:#fff;font-weight:600;outline-offset:2px}
+.plot:focus-visible{outline:2px solid var(--ink)}
+.plot:hover{filter:brightness(1.1)}
+
+.months{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px}
+.mo{border-radius:8px;padding:6px 8px;font-size:11.5px;display:flex;flex-direction:column;gap:2px}
+.mo b{font-size:12px}
+
+/* overlays */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(600px,100%);background:var(--surface);z-index:21;display:flex;flex-direction:column;box-shadow:var(--shadow);border-left:1px solid var(--line)}
+.dh{padding:18px 22px;padding-top:calc(18px + env(safe-area-inset-top,0px));border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.dh h2{font-size:21px}
+.db{padding:18px 22px 40px;overflow-y:auto;display:flex;flex-direction:column;gap:18px}
+.db h3{font-size:15px;margin-bottom:8px}
+.x{all:unset;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;border-radius:8px;font-size:20px;color:var(--muted);flex:none}
+.x:hover{background:var(--sunk)}
+.modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:16px}
+.mbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:min(640px,100%);max-height:calc(100% - 32px);overflow-y:auto;padding:22px;box-shadow:var(--shadow);position:relative;z-index:1}
+.mbox h2{font-size:20px;margin-bottom:14px}
+.form .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+.fld{display:flex;flex-direction:column;gap:5px;grid-column:1/-1;min-width:0}
+.fld.half{grid-column:auto}
+.fld label{font-size:12.5px;font-weight:600;color:var(--muted)}
+.fld input,.fld select,.fld textarea{border:1px solid var(--line);background:var(--sunk);border-radius:9px;padding:9px 11px;font-size:14px;width:100%}
+.fld textarea{min-height:70px;resize:vertical}
+.fld .hint{font-size:11.5px;color:var(--muted)}
+.formbar{display:flex;gap:8px;margin-top:18px;align-items:center;flex-wrap:wrap}
+.sp{flex:1}
+.err{color:var(--bad);font-size:13px;margin-top:10px}
+@media (max-width:560px){.form .grid2{grid-template-columns:1fr}.fld.half{grid-column:1/-1}}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:10px;font-size:13.5px;z-index:40;max-width:calc(100% - 32px)}
+
+.sumrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.sumrow div{background:var(--sunk);border-radius:10px;padding:10px 12px}
+.sumrow span{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.sumrow b{font-variant-numeric:tabular-nums;font-size:16px}
+
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:sticky;top:env(safe-area-inset-top,0px);height:auto;z-index:10;padding:12px 16px;gap:10px}
+  .nav{flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:4px}
+  .nav .grp{flex-direction:row;gap:4px}
+  .nav .gl{display:none}
+  .nav button{white-space:nowrap;padding:7px 10px;font-size:13px}
+  .side .foot{display:none}
+  .main{padding-block:20px 50px}
+}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="18" y="1" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="1" y="18" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="18" y="18" width="15" height="15" rx="2" fill="#c9962f"/></svg>
+      <div><b>Anayah Gestim</b><small>Gestion immobilière</small></div>
+    </div>
+    <nav class="nav" id="nav" aria-label="Modules"></nav>
+    <div class="foot" id="foot"></div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <div><p class="eyebrow" id="eyebrow"></p><h1 id="title">Anayah Gestim</h1></div>
+      <div class="actions" id="actions"></div>
+    </header>
+    <div id="banner"></div>
+    <div id="view"></div>
+  </main>
+</div>
+<div id="drawerRoot"></div>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script>
+/* ---------- utilitaires ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const z2 = n => String(n).padStart(2, '0');
+const iso = d => d.getFullYear() + '-' + z2(d.getMonth() + 1) + '-' + z2(d.getDate());
+const TODAY = iso(new Date()), THIS_MONTH = TODAY.slice(0, 7), THIS_YEAR = TODAY.slice(0, 4);
+const num = v => Number(v) || 0;
+function addMonths(d, n) { const [y, m, dd] = d.split('-').map(Number); const t = new Date(y, m - 1 + n, 1); const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate(); t.setDate(Math.min(dd || 1, last)); return iso(t); }
+function monthsBetween(a, b) { const out = []; let [y, m] = a.split('-').map(Number); const [y2, m2] = b.split('-').map(Number); while ((y < y2 || (y === y2 && m <= m2)) && out.length < 600) { out.push(y + '-' + z2(m)); m++; if (m > 12) { m = 1; y++; } } return out; }
+const nf = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0});
+const money = v => nf.format(Math.round(num(v))) + ' ' + esc(CFG.devise || '');
+const moneyShort = v => { v = num(v); if (Math.abs(v) >= 1e9) return (v / 1e9).toFixed(1).replace('.', ',') + ' Md'; if (Math.abs(v) >= 1e6) return (v / 1e6).toFixed(1).replace('.', ',') + ' M'; if (Math.abs(v) >= 1e3) return Math.round(v / 1e3) + ' k'; return String(Math.round(v)); };
+const fmtDate = d => d ? new Date(d + 'T00:00').toLocaleDateString('fr-FR', {day: '2-digit', month: 'short', year: 'numeric'}) : '—';
+const fmtMonth = m => m ? new Date(m + '-01T00:00').toLocaleDateString('fr-FR', {month: 'short', year: 'numeric'}) : '—';
+const pct = v => Math.round(v * 100) + ' %';
+
+/* ---------- données ---------- */
+const COLS = ['cites', 'lots', 'tiers', 'ventes', 'baux', 'espaces', 'charges', 'cotisations', 'interventions'];
+const S = {}; COLS.forEach(c => S[c] = []);
+const loaded = new Set();
+let CFG = {devise: 'FCFA', societe: 'Anayah Gestim'};
+let DB = null, DL = null, MODE = 'init', READONLY = false;
+const LKEY = 'anayah-gestim-local';
+const byId = (c, id) => S[c].find(x => x.id === id);
+
+function localLoad() { try { const o = JSON.parse(localStorage.getItem(LKEY) || '{}'); COLS.forEach(c => S[c] = o[c] || []); if (o.cfg) CFG = {...CFG, ...o.cfg}; } catch (e) {} }
+function localSave() { try { const o = {cfg: CFG}; COLS.forEach(c => o[c] = S[c]); localStorage.setItem(LKEY, JSON.stringify(o)); } catch (e) {} }
+
+function dbError(e) {
+  const c = e && e.code;
+  if (c === 'invalid_argument') { READONLY = true; schedule(); return 'Votre accès à cette application est en lecture seule.'; }
+  if (c === 'quota_exceeded') return 'La base de données est pleine. Supprimez des enregistrements anciens.';
+  if (c === 'resource_exhausted') return 'Trop d’opérations en peu de temps. Patientez quelques secondes.';
+  return 'Enregistrement impossible pour le moment. Réessayez.';
+}
+async function save(col, obj) {
+  if (READONLY) { toast('Votre accès est en lecture seule.'); return null; }
+  const id = obj.id || uid(); const body = {...obj}; delete body.id; body.maj = new Date().toISOString();
+  if (MODE === 'cloud') {
+    try { await DB.collection(col).doc(id).set(body); }
+    catch (e) {
+      if (e && e.code === 'unavailable') { await new Promise(r => setTimeout(r, 600 + Math.random() * 600)); try { await DB.collection(col).doc(id).set(body); return id; } catch (e2) { toast(dbError(e2)); return null; } }
+      toast(dbError(e)); return null;
+    }
+  } else {
+    const i = S[col].findIndex(x => x.id === id); const rec = {id, ...body};
+    if (i >= 0) S[col][i] = rec; else S[col].push(rec); localSave(); schedule();
+  }
+  return id;
+}
+async function remove(col, id) {
+  if (READONLY) { toast('Votre accès est en lecture seule.'); return false; }
+  if (MODE === 'cloud') { try { await DB.collection(col).doc(id).delete(); } catch (e) { toast(dbError(e)); return false; } }
+  else { S[col] = S[col].filter(x => x.id !== id); localSave(); schedule(); }
+  return true;
+}
+async function saveCfg(patch) {
+  CFG = {...CFG, ...patch};
+  if (MODE === 'cloud') { try { await DB.doc('config/app').set(CFG); } catch (e) { toast(dbError(e)); return; } }
+  else { localSave(); }
+  schedule();
+}
+
+/* ---------- schémas ---------- */
+const TYPES_LOT = ['Terrain nu', 'Terrain viabilisé', 'Villa', 'Appartement', 'Duplex', 'Local commercial', 'Bureau', 'Entrepôt'];
+const MODES_PAY = ['Espèces', 'Virement', 'Mobile money', 'Chèque', 'Acompte'];
+const SCHEMA = {
+  cites: {nouveau: 'Nouvelle cité', titre: 'la cité', fields: [
+    {k: 'nom', l: 'Nom de la cité ou du programme', req: 1},
+    {k: 'ville', l: 'Ville', half: 1}, {k: 'quartier', l: 'Quartier / commune', half: 1},
+    {k: 'superficie', l: 'Superficie totale (ha)', t: 'number', half: 1, step: 'any'},
+    {k: 'statut', l: 'Phase du programme', t: 'select', o: ['Étude & lotissement', 'Viabilisation', 'Commercialisation', 'Livrée'], half: 1},
+    {k: 'promoteur', l: 'Promoteur / maître d’ouvrage', half: 1},
+    {k: 'cotisation', l: 'Cotisation syndic mensuelle par lot', t: 'number', half: 1, hint: 'Sert au calcul des appels de charges'},
+    {k: 'notes', l: 'Notes', t: 'textarea'}]},
+  lots: {nouveau: 'Nouveau lot', titre: 'le lot', fields: [
+    {k: 'ref', l: 'Référence du lot', req: 1, half: 1, ph: 'A-012'},
+    {k: 'citeId', l: 'Cité', t: 'ref', ref: 'cites', req: 1, half: 1},
+    {k: 'ilot', l: 'Îlot / bloc', half: 1, ph: 'Îlot A'},
+    {k: 'type', l: 'Type de bien', t: 'select', o: TYPES_LOT, half: 1},
+    {k: 'surface', l: 'Surface (m²)', t: 'number', half: 1, step: 'any'},
+    {k: 'titre', l: 'N° titre foncier / parcelle', half: 1},
+    {k: 'prix', l: 'Prix de vente', t: 'number', half: 1},
+    {k: 'loyer', l: 'Loyer mensuel indicatif', t: 'number', half: 1},
+    {k: 'statut', l: 'Statut', t: 'select', o: ['Disponible', 'Réservé', 'Vendu', 'Loué', 'Indisponible'], half: 1},
+    {k: 'notes', l: 'Notes', t: 'textarea'}]},
+  tiers: {nouveau: 'Nouveau tiers', titre: 'le tiers', fields: [
+    {k: 'nom', l: 'Nom complet / raison sociale', req: 1},
+    {k: 'categorie', l: 'Catégorie', t: 'select', o: ['Acquéreur', 'Locataire', 'Propriétaire', 'Prestataire', 'Prospect'], half: 1},
+    {k: 'tel', l: 'Téléphone', half: 1, t: 'tel'},
+    {k: 'email', l: 'E-mail', half: 1, t: 'email'},
+    {k: 'piece', l: 'Pièce d’identité / RCCM', half: 1},
+    {k: 'adresse', l: 'Adresse'},
+    {k: 'notes', l: 'Notes', t: 'textarea'}]},
+  ventes: {nouveau: 'Nouvelle vente', titre: 'la vente', fields: [
+    {k: 'lotId', l: 'Lot vendu', t: 'ref', ref: 'lots', req: 1, half: 1},
+    {k: 'tiersId', l: 'Acquéreur', t: 'ref', ref: 'tiers', req: 1, half: 1},
+    {k: 'date', l: 'Date de signature', t: 'date', req: 1, half: 1},
+    {k: 'prix', l: 'Prix convenu', t: 'number', req: 1, half: 1},
+    {k: 'mode', l: 'Modalité de paiement', t: 'select', o: ['Comptant', 'Échelonné'], half: 1},
+    {k: 'acompte', l: 'Acompte à la signature', t: 'number', half: 1, hint: 'Enregistré comme premier paiement'},
+    {k: 'nbEcheances', l: 'Nombre de mensualités', t: 'number', half: 1},
+    {k: 'premiere', l: 'Date de la 1re mensualité', t: 'date', half: 1},
+    {k: 'notaire', l: 'Notaire / référence de l’acte'},
+    {k: 'notes', l: 'Notes', t: 'textarea'}]},
+  baux: {nouveau: 'Nouveau bail', titre: 'le bail', fields: [
+    {k: 'lotId', l: 'Bien loué', t: 'ref', ref: 'lots', req: 1, half: 1},
+    {k: 'tiersId', l: 'Locataire', t: 'ref', ref: 'tiers', req: 1, half: 1},
+    {k: 'debut', l: 'Date d’entrée', t: 'date', req: 1, half: 1},
+    {k: 'duree', l: 'Durée (mois)', t: 'number', half: 1, hint: 'Laisser vide pour une durée indéterminée'},
+    {k: 'loyer', l: 'Loyer mensuel', t: 'number', req: 1, half: 1},
+    {k: 'charges', l: 'Charges mensuelles', t: 'number', half: 1},
+    {k: 'caution', l: 'Caution / garantie', t: 'number', half: 1},
+    {k: 'statut', l: 'Statut', t: 'select', o: ['Actif', 'Résilié', 'Terminé'], half: 1},
+    {k: 'resil', l: 'Date de sortie (si résilié)', t: 'date', half: 1},
+    {k: 'notes', l: 'Notes', t: 'textarea'}]},
+  espaces: {nouveau: 'Nouvel espace commun', titre: 'l’espace', fields: [
+    {k: 'nom', l: 'Nom de l’espace', req: 1, half: 1},
+    {k: 'citeId', l: 'Cité', t: 'ref', ref: 'cites', req: 1, half: 1},
+    {k: 'type', l: 'Type', t: 'select', o: ['Salle polyvalente', 'Piscine', 'Terrain de sport', 'Aire de jeux', 'Jardin / espace vert', 'Parking', 'Salle de sport', 'Lieu de culte', 'Autre'], half: 1},
+    {k: 'capacite', l: 'Capacité (personnes / places)', t: 'number', half: 1},
+    {k: 'tarif', l: 'Tarif de réservation', t: 'number', half: 1},
+    {k: 'horaires', l: 'Horaires d’ouverture', half: 1, ph: '07:00 – 22:00'},
+    {k: 'statut', l: 'État', t: 'select', o: ['Ouvert', 'Fermé', 'En travaux'], half: 1},
+    {k: 'notes', l: 'Règlement / notes', t: 'textarea'}]},
+  charges: {nouveau: 'Nouvelle dépense commune', titre: 'la dépense', fields: [
+    {k: 'libelle', l: 'Libellé', req: 1},
+    {k: 'citeId', l: 'Cité', t: 'ref', ref: 'cites', req: 1, half: 1},
+    {k: 'categorie', l: 'Catégorie', t: 'select', o: ['Gardiennage & sécurité', 'Électricité', 'Eau', 'Entretien espaces verts', 'Nettoyage & ordures', 'Voirie & éclairage', 'Assurance', 'Honoraires syndic', 'Travaux', 'Autre'], half: 1},
+    {k: 'montant', l: 'Montant', t: 'number', req: 1, half: 1},
+    {k: 'date', l: 'Date', t: 'date', req: 1, half: 1},
+    {k: 'fournisseur', l: 'Fournisseur / prestataire', half: 1},
+    {k: 'statut', l: 'Règlement', t: 'select', o: ['À payer', 'Payée'], half: 1}]},
+  cotisations: {nouveau: 'Encaisser une cotisation', titre: 'la cotisation', fields: [
+    {k: 'citeId', l: 'Cité', t: 'ref', ref: 'cites', req: 1, half: 1},
+    {k: 'lotId', l: 'Lot', t: 'ref', ref: 'lots', req: 1, half: 1},
+    {k: 'mois', l: 'Mois concerné', t: 'month', req: 1, half: 1},
+    {k: 'montant', l: 'Montant', t: 'number', req: 1, half: 1},
+    {k: 'date', l: 'Date d’encaissement', t: 'date', req: 1, half: 1},
+    {k: 'mode', l: 'Mode', t: 'select', o: MODES_PAY.slice(0, 4), half: 1}]},
+  interventions: {nouveau: 'Nouvelle intervention', titre: 'l’intervention', fields: [
+    {k: 'titre', l: 'Objet', req: 1},
+    {k: 'citeId', l: 'Cité', t: 'ref', ref: 'cites', req: 1, half: 1},
+    {k: 'lieu', l: 'Lieu précis (lot, espace, voie)', half: 1},
+    {k: 'categorie', l: 'Corps de métier', t: 'select', o: ['Plomberie', 'Électricité', 'Voirie', 'Espaces verts', 'Sécurité', 'Bâtiment', 'Assainissement', 'Autre'], half: 1},
+    {k: 'priorite', l: 'Priorité', t: 'select', o: ['Basse', 'Normale', 'Haute', 'Urgente'], half: 1},
+    {k: 'statut', l: 'Statut', t: 'select', o: ['Signalée', 'Planifiée', 'En cours', 'Terminée'], half: 1},
+    {k: 'prestataireId', l: 'Prestataire', t: 'ref', ref: 'tiers', half: 1},
+    {k: 'date', l: 'Date prévue', t: 'date', half: 1},
+    {k: 'cout', l: 'Coût estimé / réel', t: 'number', half: 1},
+    {k: 'notes', l: 'Détails', t: 'textarea'}]},
+};
+const LABEL = {
+  cites: x => x.nom,
+  lots: x => `${x.ref} · ${byId('cites', x.citeId)?.nom || '—'} (${x.statut || '—'})`,
+  tiers: x => `${x.nom}${x.categorie ? ' — ' + x.categorie : ''}`,
+};
+const ST = {Disponible: 'ok', Réservé: 'warn', Vendu: 'info', Loué: 'violet', Indisponible: 'mut', Soldé: 'ok', 'En cours': 'info', 'En retard': 'bad', Actif: 'ok', Résilié: 'mut', Terminé: 'mut', Ouvert: 'ok', Fermé: 'mut', 'En travaux': 'warn', Payée: 'ok', 'À payer': 'warn', Signalée: 'bad', Planifiée: 'warn', Terminée: 'ok', Urgente: 'bad', Haute: 'warn', Normale: 'info', Basse: 'mut', Confirmée: 'ok', 'En attente': 'warn', Annulée: 'mut', Payé: 'ok', Partiel: 'warn', Impayé: 'bad', Partielle: 'warn', 'À venir': 'mut', 'Étude & lotissement': 'mut', Viabilisation: 'warn', Commercialisation: 'info', Livrée: 'ok'};
+const chip = s => s ? `<span class="chip s-${ST[s] || 'mut'}">${esc(s)}</span>` : '';
+const exTag = r => r && r.exemple ? '<span class="ex">exemple</span>' : '';
+
+/* ---------- calculs ---------- */
+function venteCalc(v) {
+  const prix = num(v.prix), ac = Math.min(num(v.acompte), prix);
+  const paid = (v.paiements || []).reduce((s, p) => s + num(p.montant), 0);
+  const sched = [];
+  if (v.mode === 'Échelonné' && num(v.nbEcheances) > 0) {
+    const n = Math.round(num(v.nbEcheances)), rest = prix - ac, base = Math.floor(rest / n);
+    if (ac > 0) sched.push({label: 'Acompte', date: v.date || TODAY, montant: ac});
+    const start = v.premiere || addMonths(v.date || TODAY, 1);
+    for (let i = 0; i < n; i++) sched.push({label: `Mensualité ${i + 1}/${n}`, date: addMonths(start, i), montant: i === n - 1 ? rest - base * (n - 1) : base});
+  } else sched.push({label: 'Paiement comptant', date: v.date || TODAY, montant: prix});
+  let pool = paid;
+  sched.forEach(e => { const c = Math.min(pool, e.montant); pool -= c; e.paye = c; e.etat = c >= e.montant - .5 ? 'Payée' : e.date <= TODAY ? (c > 0 ? 'Partielle' : 'En retard') : (c > 0 ? 'Partielle' : 'À venir'); });
+  const du = sched.filter(e => e.date <= TODAY).reduce((s, e) => s + e.montant, 0);
+  const retard = Math.max(0, du - paid), reste = Math.max(0, prix - paid);
+  const statut = reste <= .5 ? 'Soldé' : retard > .5 ? 'En retard' : 'En cours';
+  return {prix, paid, reste, retard, sched, statut, next: sched.find(e => e.etat !== 'Payée'), ratio: prix ? Math.min(1, paid / prix) : 0};
+}
+function bailCalc(b) {
+  const mens = num(b.loyer) + num(b.charges);
+  const startM = (b.debut || TODAY).slice(0, 7);
+  let endM = THIS_MONTH;
+  if (num(b.duree) > 0) { const f = addMonths(b.debut || TODAY, num(b.duree) - 1).slice(0, 7); if (f < endM) endM = f; }
+  if (b.statut !== 'Actif' && b.resil) { const r = b.resil.slice(0, 7); if (r < endM) endM = r; }
+  const months = startM <= endM ? monthsBetween(startM, endM) : [];
+  const paidBy = {}; (b.paiements || []).forEach(p => paidBy[p.mois] = (paidBy[p.mois] || 0) + num(p.montant));
+  const rows = months.map(m => { const p = paidBy[m] || 0; return {m, p, etat: p >= mens - .5 ? 'Payé' : p > 0 ? 'Partiel' : 'Impayé'}; });
+  const du = months.length * mens, paidIn = rows.reduce((s, r) => s + r.p, 0);
+  const paid = (b.paiements || []).reduce((s, p) => s + num(p.montant), 0);
+  const impaye = Math.max(0, du - paidIn);
+  const first = rows.find(r => r.etat !== 'Payé');
+  const nextMonth = first ? first.m : addMonths((months[months.length - 1] || startM) + '-01', months.length ? 1 : 0).slice(0, 7);
+  const actifCeMois = b.statut === 'Actif' && startM <= THIS_MONTH && months.includes(THIS_MONTH);
+  return {mens, rows, du, paid, impaye, first, nextMonth, actifCeMois, nbImp: rows.filter(r => r.etat !== 'Payé').length};
+}
+function allPayments() {
+  const out = [];
+  S.ventes.forEach(v => (v.paiements || []).forEach(p => out.push({date: p.date, montant: num(p.montant), src: 'v'})));
+  S.baux.forEach(b => (b.paiements || []).forEach(p => out.push({date: p.date, montant: num(p.montant), src: 'l'})));
+  S.cotisations.forEach(c => out.push({date: c.date, montant: num(c.montant), src: 'a'}));
+  S.espaces.forEach(e => (e.reservations || []).filter(r => r.statut === 'Confirmée').forEach(r => out.push({date: r.date, montant: num(r.montant), src: 'a'})));
+  return out.filter(p => p.date);
+}
+const lotName = id => byId('lots', id)?.ref || '—';
+const citeName = id => byId('cites', id)?.nom || '—';
+const tiersName = id => byId('tiers', id)?.nom || '—';
+const lotCiteName = id => citeName(byId('lots', id)?.citeId);
+
+/* ---------- état d'interface ---------- */
+const UI = {view: 'dashboard', drawer: null, f: {}};
+try { const v = localStorage.getItem('anayah-view'); if (v) UI.view = v; } catch (e) {}
+if (location.hash && location.hash.length > 1) UI.view = location.hash.slice(1);
+
+const ICON = {
+  dashboard: '<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>',
+  cites: '<path d="M3 21h18M5 21V9l5-3v15M10 21V4l9 4v13M13 9h3M13 13h3M13 17h3"/>',
+  lots: '<path d="M3 3h18v18H3zM3 12h18M12 3v18"/>',
+  ventes: '<path d="M20.6 13.4 12 22l-9-9V3h10z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+  baux: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14 9l2 2"/>',
+  espaces: '<path d="M12 22v-6M7 16h10l-5-12z"/><path d="M3 22h18"/>',
+  syndic: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
+  interventions: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>',
+  tiers: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
+  params: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+};
+const VIEWS = [
+  ['Pilotage', [['dashboard', 'Tableau de bord']]],
+  ['Patrimoine', [['cites', 'Cités & programmes'], ['lots', 'Lots & terrains']]],
+  ['Commercial', [['ventes', 'Ventes de terrains'], ['baux', 'Locations']]],
+  ['Vie des cités', [['espaces', 'Espaces communs'], ['syndic', 'Syndic & charges'], ['interventions', 'Maintenance']]],
+  ['Contacts', [['tiers', 'Clients & tiers'], ['params', 'Paramètres']]],
+];
+const VIEW_INFO = {}; VIEWS.forEach(([g, items]) => items.forEach(([k, t]) => VIEW_INFO[k] = {g, t}));
+if (!VIEW_INFO[UI.view]) UI.view = 'dashboard';
+
+/* ---------- rendu ---------- */
+let pending = false;
+function schedule() { if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; render(); }); } }
+function go(v) { UI.view = v; UI.drawer = null; try { localStorage.setItem('anayah-view', v); } catch (e) {} try { history.replaceState(null, '', '#' + v); } catch (e) {} render(); window.scrollTo(0, 0); }
+
+function render() {
+  $('#nav').innerHTML = VIEWS.map(([g, items]) => `<div class="grp"><div class="gl">${g}</div>${items.map(([k, t]) => `<button data-a="go" data-v="${k}" ${UI.view === k ? 'aria-current="page"' : ''}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>${t}</button>`).join('')}</div>`).join('');
+  $('#foot').innerHTML = MODE === 'cloud' ? `<span><i class="dot"></i>Données synchronisées</span><span>${READONLY ? 'Accès en lecture seule' : 'Partagées avec votre équipe'}</span>` : MODE === 'local' ? `<span><i class="dot local"></i>Mode local</span><span>Données gardées dans ce navigateur</span>` : '<span>Connexion…</span>';
+  const info = VIEW_INFO[UI.view];
+  $('#eyebrow').textContent = info.g + (CFG.societe && CFG.societe !== 'Anayah Gestim' ? ' · ' + CFG.societe : '');
+  $('#title').textContent = info.t;
+  $('#banner').innerHTML = MODE === 'local' ? `<div class="banner">La base partagée n’est pas joignable depuis cette vue : vos saisies sont conservées uniquement dans ce navigateur.</div>` : READONLY ? `<div class="banner">Vous consultez Anayah Gestim en lecture seule. Demandez un accès Contributeur au propriétaire pour saisir des données.</div>` : '';
+  const V = VIEWS_R[UI.view];
+  const out = V();
+  $('#actions').innerHTML = out.actions || '';
+  $('#view').innerHTML = out.html;
+  renderDrawer();
+}
+const loading = () => MODE === 'init' || (MODE === 'cloud' && loaded.size < COLS.length);
+function emptyState(title, text, action) { return `<div class="panel"><div class="empty"><b>${title}</b><span>${text}</span>${action || ''}</div></div>`; }
+const addBtn = (col, extra = '') => READONLY ? '' : `<button class="btn primary" data-a="new" data-c="${col}" ${extra}>+ ${SCHEMA[col].nouveau}</button>`;
+const csvBtn = key => `<button class="btn" data-a="csv" data-k="${key}">Exporter CSV</button>`;
+
+/* --- Tableau de bord --- */
+function vDashboard() {
+  if (loading()) return {html: emptyState('Chargement des données…', 'Connexion à la base de votre agence.')};
+  if (!S.cites.length && !S.lots.length) return {actions: addBtn('cites'), html: emptyState('Bienvenue dans Anayah Gestim', 'Commencez par créer une cité ou un programme, puis ajoutez ses lots et terrains. Les ventes, locations, espaces communs et charges s’y rattacheront.', addBtn('cites'))};
+  const pays = allPayments();
+  const moisEnc = pays.filter(p => p.date.slice(0, 7) === THIS_MONTH).reduce((s, p) => s + p.montant, 0);
+  const vc = S.ventes.map(v => ({v, c: venteCalc(v)}));
+  const resteV = vc.reduce((s, x) => s + x.c.reste, 0), retardV = vc.reduce((s, x) => s + x.c.retard, 0);
+  const bc = S.baux.map(b => ({b, c: bailCalc(b)}));
+  const impL = bc.reduce((s, x) => s + x.c.impaye, 0);
+  const attendus = bc.filter(x => x.c.actifCeMois).reduce((s, x) => s + x.c.mens, 0);
+  const encL = S.baux.reduce((s, b) => s + (b.paiements || []).filter(p => p.mois === THIS_MONTH).reduce((a, p) => a + num(p.montant), 0), 0);
+  const loues = S.lots.filter(l => l.statut === 'Loué').length;
+  const parc = S.lots.filter(l => l.statut === 'Loué' || (num(l.loyer) > 0 && l.statut !== 'Vendu')).length;
+  const counts = {}; S.lots.forEach(l => counts[l.statut || 'Disponible'] = (counts[l.statut || 'Disponible'] || 0) + 1);
+  const ordre = ['Disponible', 'Réservé', 'Vendu', 'Loué', 'Indisponible'];
+  const tot = S.lots.length || 1;
+  const openI = S.interventions.filter(i => i.statut !== 'Terminée');
+  const urg = openI.filter(i => i.priorite === 'Urgente' || i.priorite === 'Haute').length;
+
+  // graphique 12 mois
+  const months = monthsBetween(addMonths(THIS_MONTH + '-01', -11).slice(0, 7), THIS_MONTH);
+  const agg = months.map(m => { const r = {m, v: 0, l: 0, a: 0}; pays.forEach(p => { if (p.date.slice(0, 7) === m) r[p.src] += p.montant; }); r.t = r.v + r.l + r.a; return r; });
+  const chart = barChart(agg);
+
+  const relances = [
+    ...vc.filter(x => x.c.retard > .5).map(x => ({k: 'vente', id: x.v.id, who: tiersName(x.v.tiersId), what: `Vente · lot ${lotName(x.v.lotId)} — ${lotCiteName(x.v.lotId)}`, m: x.c.retard})),
+    ...bc.filter(x => x.c.impaye > .5).map(x => ({k: 'bail', id: x.b.id, who: tiersName(x.b.tiersId), what: `Loyer · ${lotName(x.b.lotId)} — ${x.c.nbImp} mois`, m: x.c.impaye})),
+  ].sort((a, b) => b.m - a.m).slice(0, 7);
+  const resas = [];
+  S.espaces.forEach(e => (e.reservations || []).forEach(r => { if (r.date >= TODAY && r.statut !== 'Annulée') resas.push({e, r}); }));
+  resas.sort((a, b) => (a.r.date + (a.r.debut || '')).localeCompare(b.r.date + (b.r.debut || '')));
+
+  return {actions: `${addBtn('ventes')}${READONLY ? '' : `<button class="btn" data-a="new" data-c="baux">+ Nouveau bail</button>`}`, html: `
+  <div class="grid" style="gap:16px">
+    <div class="grid g-kpi">
+      <div class="kpi hl"><span class="l">Encaissé en ${esc(fmtMonth(THIS_MONTH))}</span><span class="v">${money(moisEnc)}</span><span class="s">Ventes, loyers, cotisations et réservations</span></div>
+      <div class="kpi"><span class="l">Reste à encaisser · ventes</span><span class="v">${money(resteV)}</span><span class="s">${retardV > .5 ? `<span style="color:var(--bad);font-weight:600">${money(retardV)} en retard</span>` : 'Aucune échéance en retard'}</span></div>
+      <div class="kpi"><span class="l">Loyers du mois</span><span class="v">${money(encL)}</span><span class="s">sur ${money(attendus)} attendus · impayés cumulés ${money(impL)}</span></div>
+      <div class="kpi"><span class="l">Occupation locative</span><span class="v">${parc ? pct(loues / parc) : '—'}</span><span class="s">${loues} bien(s) loué(s) sur ${parc} en location</span></div>
+    </div>
+    <div class="grid g-2">
+      <section class="panel"><div class="ph"><h2>Encaissements des 12 derniers mois</h2><div class="legend"><span><i class="lg-v"></i>Ventes</span><span><i class="lg-l"></i>Loyers</span><span><i class="lg-a"></i>Syndic & espaces</span></div></div><div class="chart">${chart}</div></section>
+      <section class="panel"><div class="ph"><h2>À relancer</h2><p>Retards de paiement</p></div>
+        ${relances.length ? `<div class="list">${relances.map(r => `<div class="li"><div class="t"><b>${esc(r.who)}</b><span>${esc(r.what)}</span></div><button class="btn sm" data-a="open" data-k="${r.k}" data-id="${r.id}" style="color:var(--bad)">${money(r.m)}</button></div>`).join('')}</div>` : '<div class="empty">Aucun retard. Tous les comptes sont à jour.</div>'}
+      </section>
+    </div>
+    <div class="grid g-2">
+      <section class="panel"><div class="ph"><h2>Portefeuille de lots</h2><p>${S.lots.length} lots dans ${S.cites.length} cité(s)</p></div>
+        <div class="stack" style="height:12px">${ordre.map(s => counts[s] ? `<i class="f-${s}" style="width:${counts[s] / tot * 100}%" title="${s} : ${counts[s]}"></i>` : '').join('')}</div>
+        <div class="legend" style="margin:10px 0 14px">${ordre.map(s => `<span><i class="f-${s}"></i>${s} · ${counts[s] || 0}</span>`).join('')}</div>
+        <div class="tbl"><table><thead><tr><th>Cité</th><th class="n">Lots</th><th class="n">Vendus</th><th class="n">Loués</th><th class="n">Disponibles</th><th>Phase</th></tr></thead><tbody>
+        ${S.cites.map(c => { const ls = S.lots.filter(l => l.citeId === c.id); return `<tr class="click" data-a="open" data-k="cite" data-id="${c.id}"><td><b>${esc(c.nom)}</b>${exTag(c)}<span class="sub">${esc([c.quartier, c.ville].filter(Boolean).join(', '))}</span></td><td class="n">${ls.length}</td><td class="n">${ls.filter(l => l.statut === 'Vendu').length}</td><td class="n">${ls.filter(l => l.statut === 'Loué').length}</td><td class="n">${ls.filter(l => (l.statut || 'Disponible') === 'Disponible').length}</td><td>${chip(c.statut)}</td></tr>`; }).join('')}
+        </tbody></table></div>
+      </section>
+      <section class="panel"><div class="ph"><h2>Vie des cités</h2><p>${openI.length} intervention(s) ouverte(s)${urg ? ` · <b style="color:var(--bad)">${urg} prioritaire(s)</b>` : ''}</p></div>
+        <div class="list">${openI.sort((a, b) => ['Urgente', 'Haute', 'Normale', 'Basse'].indexOf(a.priorite) - ['Urgente', 'Haute', 'Normale', 'Basse'].indexOf(b.priorite)).slice(0, 4).map(i => `<div class="li"><div class="t"><b>${esc(i.titre)}</b><span>${esc(citeName(i.citeId))}${i.lieu ? ' · ' + esc(i.lieu) : ''}</span></div>${chip(i.priorite)}</div>`).join('') || '<div class="empty">Aucune intervention en cours.</div>'}</div>
+        <h3 style="font-size:14px;margin:16px 0 4px">Prochaines réservations</h3>
+        <div class="list">${resas.slice(0, 4).map(({e, r}) => `<div class="li"><div class="t"><b>${esc(e.nom)}</b><span>${fmtDate(r.date)}${r.debut ? ' · ' + esc(r.debut) + '–' + esc(r.fin || '') : ''} · ${esc(r.beneficiaire || '')}</span></div>${chip(r.statut)}</div>`).join('') || '<div class="empty">Aucune réservation à venir.</div>'}</div>
+      </section>
+    </div>
+  </div>`};
+}
+function barChart(rows) {
+  const W = 640, H = 230, L = 48, B = 26, T = 10, R = 8;
+  const max = Math.max(1, ...rows.map(r => r.t));
+  const raw = max / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), step = [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => s >= raw);
+  const top = step * 4, ih = H - T - B, bw = (W - L - R) / rows.length;
+  const y = v => T + ih - v / top * ih;
+  let g = '';
+  for (let i = 0; i <= 4; i++) { const v = step * i; g += `<line class="gl" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${moneyShort(v)}</text>`; }
+  rows.forEach((r, i) => {
+    const x = L + i * bw + bw * .18, w = bw * .64; let acc = 0;
+    [['v', 'c-v'], ['l', 'c-l'], ['a', 'c-a']].forEach(([k, cl]) => { if (r[k] > 0) { const h = r[k] / top * ih; g += `<rect class="${cl}" x="${x}" y="${y(acc + r[k])}" width="${w}" height="${Math.max(h, 1)}" rx="2"><title>${fmtMonth(r.m)} : ${nf.format(r[k])}</title></rect>`; acc += r[k]; } });
+    g += `<text x="${x + w / 2}" y="${H - 8}" text-anchor="middle">${new Date(r.m + '-01T00:00').toLocaleDateString('fr-FR', {month: 'short'}).replace('.', '')}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Encaissements mensuels">${g}</svg>`;
+}
+
+/* --- Cités --- */
+function vCites() {
+  if (loading()) return {html: emptyState('Chargement…', '')};
+  if (!S.cites.length) return {actions: addBtn('cites'), html: emptyState('Aucune cité enregistrée', 'Une cité regroupe les lots, les espaces communs, les charges du syndic et les interventions d’un même programme.', addBtn('cites'))};
+  return {actions: csvBtn('cites') + addBtn('cites'), html: `<div class="grid g-cards">${S.cites.map(c => {
+    const ls = S.lots.filter(l => l.citeId === c.id), n = ls.length || 1;
+    const cnt = s => ls.filter(l => (l.statut || 'Disponible') === s).length;
+    const ca = S.ventes.filter(v => byId('lots', v.lotId)?.citeId === c.id).reduce((s, v) => s + num(v.prix), 0);
+    return `<button class="card" data-a="open" data-k="cite" data-id="${c.id}">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><h3>${esc(c.nom)}${exTag(c)}</h3><div class="meta">${esc([c.quartier, c.ville].filter(Boolean).join(', ') || '—')}</div></div>${chip(c.statut)}</div>
+      <div class="stack">${['Disponible', 'Réservé', 'Vendu', 'Loué', 'Indisponible'].map(s => cnt(s) ? `<i class="f-${s}" style="width:${cnt(s) / n * 100}%"></i>` : '').join('')}</div>
+      <div class="kv"><div><span>Lots</span><b>${ls.length}</b></div><div><span>Surface</span><b>${c.superficie ? esc(String(c.superficie).replace('.', ',')) + ' ha' : '—'}</b></div><div><span>Ventes</span><b>${moneyShort(ca)}</b></div></div>
+    </button>`; }).join('')}</div>`};
+}
+
+/* --- Lots --- */
+function filteredLots() {
+  const f = UI.f.lots || {}; const q = (f.q || '').toLowerCase();
+  return S.lots.filter(l => (!f.cite || l.citeId === f.cite) && (!f.statut || (l.statut || 'Disponible') === f.statut) && (!f.type || l.type === f.type) && (!q || [l.ref, l.ilot, l.titre, citeName(l.citeId)].join(' ').toLowerCase().includes(q)))
+    .sort((a, b) => citeName(a.citeId).localeCompare(citeName(b.citeId)) || String(a.ref).localeCompare(String(b.ref), 'fr', {numeric: true}));
+}
+function vLots() {
+  if (loading()) return {html: emptyState('Chargement…', '')};
+  if (!S.cites.length) return {html: emptyState('Créez d’abord une cité', 'Chaque lot ou terrain appartient à une cité ou un programme.', addBtn('cites'))};
+  const f = UI.f.lots || {};
+  const rows = filteredLots();
+  const sel = (k, opts, ph) => `<select id="flt_lots_${k}" data-f="lots" data-k="${k}" aria-label="${ph}"><option value="">${ph}</option>${opts.map(o => `<option value="${esc(o[0])}" ${f[k] === o[0] ? 'selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
+  const stock = rows.filter(l => (l.statut || 'Disponible') === 'Disponible').reduce((s, l) => s + num(l.prix), 0);
+  return {actions: csvBtn('lots') + addBtn('lots'), html: `<div class="grid" style="gap:14px">
+    <div class="filters"><input id="flt_lots_q" type="search" placeholder="Rechercher une référence, un îlot, un titre foncier…" data-f="lots" data-k="q" value="${esc(f.q || '')}">
+    ${sel('cite', S.cites.map(c => [c.id, c.nom]), 'Toutes les cités')}${sel('statut', ['Disponible', 'Réservé', 'Vendu', 'Loué', 'Indisponible'].map(s => [s, s]), 'Tous statuts')}${sel('type', TYPES_LOT.map(s => [s, s]), 'Tous types')}</div>
+    <p style="margin:0;color:var(--muted);font-size:13px">${rows.length} lot(s) affiché(s) · stock disponible valorisé à <b style="color:var(--ink)">${money(stock)}</b></p>
+    ${rows.length ? `<div class="tbl"><table><thead><tr><th>Lot</th><th>Cité</th><th>Type</th><th class="n">Surface</th><th class="n">Prix</th><th class="n">Prix / m²</th><th>Titre foncier</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${rows.map(l => `<tr class="click" data-a="edit" data-c="lots" data-id="${l.id}"><td><b class="mono">${esc(l.ref)}</b>${exTag(l)}<span class="sub">${esc(l.ilot || '')}</span></td><td>${esc(citeName(l.citeId))}</td><td>${esc(l.type || '—')}</td><td class="n">${l.surface ? nf.format(l.surface) + ' m²' : '—'}</td><td class="n">${l.prix ? money(l.prix) : '—'}${num(l.loyer) ? `<span class="sub">loyer ${money(l.loyer)}</span>` : ''}</td><td class="n">${l.prix && l.surface ? money(l.prix / l.surface) : '—'}</td><td class="mono">${esc(l.titre || '—')}</td><td>${chip(l.statut || 'Disponible')}</td>
+      <td class="n">${!READONLY && (l.statut || 'Disponible') === 'Disponible' || (!READONLY && l.statut === 'Réservé') ? `<button class="btn sm" data-a="sell" data-id="${l.id}">Vendre</button> <button class="btn sm" data-a="rent" data-id="${l.id}">Louer</button>` : ''}</td></tr>`).join('')}
+    </tbody></table></div>` : emptyState('Aucun lot ne correspond', 'Modifiez les filtres ou ajoutez un lot.', addBtn('lots'))}</div>`};
+}
+
+/* --- Ventes --- */
+function vVentes() {
+  if (loading()) return {html: emptyState('Chargement…', '')};
+  if (!S.ventes.length) return {actions: addBtn('ventes'), html: emptyState('Aucune vente enregistrée', 'Enregistrez une vente de terrain ou de bien : l’échéancier, les paiements et les retards sont calculés automatiquement.', addBtn('ventes'))};
+  const tab = UI.f.ventesTab || 'Toutes';
+  const all = S.ventes.map(v => ({v, c: venteCalc(v)})).sort((a, b) => (b.v.date || '').localeCompare(a.v.date || ''));
+  const rows = tab === 'Toutes' ? all : all.filter(x => x.c.statut === tab);
+  const sum = k => all.reduce((s, x) => s + x.c[k], 0);
+  return {actions: csvBtn('ventes') + addBtn('ventes'), html: `<div class="grid" style="gap:14px">
+    <div class="grid g-kpi"><div class="kpi"><span class="l">Chiffre d’affaires signé</span><span class="v">${money(sum('prix'))}</span><span class="s">${all.length} vente(s)</span></div>
+    <div class="kpi"><span class="l">Encaissé</span><span class="v">${money(sum('paid'))}</span><span class="s">${sum('prix') ? pct(sum('paid') / sum('prix')) : '—'} du signé</span></div>
+    <div class="kpi"><span class="l">Reste à encaisser</span><span class="v">${money(sum('reste'))}</span><span class="s">dont ${money(sum('retard'))} échu impayé</span></div></div>
+    <div class="tabs">${['Toutes', 'En cours', 'En retard', 'Soldé'].map(t => `<button data-a="tab" data-k="ventesTab" data-v="${t}" aria-pressed="${tab === t}">${t}</button>`).join('')}</div>
+    <div class="tbl"><table><thead><tr><th>Lot</th><th>Acquéreur</th><th>Signature</th><th class="n">Prix</th><th>Encaissement</th><th class="n">Reste</th><th>Prochaine échéance</th><th>Statut</th></tr></thead><tbody>
+    ${rows.map(({v, c}) => `<tr class="click" data-a="open" data-k="vente" data-id="${v.id}"><td><b class="mono">${esc(lotName(v.lotId))}</b>${exTag(v)}<span class="sub">${esc(lotCiteName(v.lotId))}</span></td><td>${esc(tiersName(v.tiersId))}<span class="sub">${esc(v.mode || 'Comptant')}${v.mode === 'Échelonné' ? ' · ' + num(v.nbEcheances) + ' mois' : ''}</span></td><td>${fmtDate(v.date)}</td><td class="n">${money(c.prix)}</td><td><div class="bar"><i style="width:${c.ratio * 100}%"></i></div><span class="sub">${pct(c.ratio)}</span></td><td class="n">${money(c.reste)}${c.retard > .5 ? `<span class="sub" style="color:var(--bad)">${money(c.retard)} en retard</span>` : ''}</td><td>${c.next ? fmtDate(c.next.date) + `<span class="sub">${money(c.next.montant - c.next.paye)}</span>` : '—'}</td><td>${chip(c.statut)}</td></tr>`).join('') || '<tr><td colspan="8"><div class="empty">Aucune vente dans cet onglet.</div></td></tr>'}
+    </tbody></table></div></div>`};
+}
+
+/* --- Locations --- */
+function vBaux() {
+  if (loading()) return {html: emptyState('Chargement…', '')};
+  if (!S.baux.length) return {actions: addBtn('baux'), html: emptyState('Aucun bail enregistré', 'Créez un bail pour suivre les loyers mois par mois, les impayés et éditer les quittances.', addBtn('baux'))};
+  const tab = UI.f.bauxTab || 'Actif';
+  const all = S.baux.map(b => ({b, c: bailCalc(b)}));
+  const rows = (tab === 'Tous' ? all : tab === 'Impayés' ? all.filter(x => x.c.impaye > .5) : all.filter(x => x.b.statut === tab)).sort((a, b) => b.c.impaye - a.c.impaye);
+  const act = all.filter(x => x.b.statut === 'Actif');
+  return {actions: csvBtn('baux') + addBtn('baux'), html: `<div class="grid" style="gap:14px">
+    <div class="grid g-kpi"><div class="kpi"><span class="l">Baux actifs</span><span class="v">${act.length}</span><span class="s">Loyer mensuel total ${money(act.reduce((s, x) => s + x.c.mens, 0))}</span></div>
+    <div class="kpi"><span class="l">Impayés cumulés</span><span class="v">${money(all.reduce((s, x) => s + x.c.impaye, 0))}</span><span class="s">${all.filter(x => x.c.impaye > .5).length} locataire(s) concerné(s)</span></div>
+    <div class="kpi"><span class="l">Cautions détenues</span><span class="v">${money(act.reduce((s, x) => s + num(x.b.caution), 0))}</span><span class="s">À restituer en fin de bail</span></div></div>
+    <div class="tabs">${['Actif', 'Impayés', 'Résilié', 'Terminé', 'Tous'].map(t => `<button data-a="tab" data-k="bauxTab" data-v="${t}" aria-pressed="${tab === t}">${t === 'Actif' ? 'Actifs' : t === 'Résilié' ? 'Résiliés' : t === 'Terminé' ? 'Terminés' : t}</button>`).join('')}</div>
+    <div class="tbl"><table><thead><tr><th>Bien</th><th>Locataire</th><th>Entrée</th><th class="n">Loyer + charges</th><th class="n">Impayés</th><th>Statut</th><th></th></tr></thead><tbody>
+    ${rows.map(({b, c}) => `<tr class="click" data-a="open" data-k="bail" data-id="${b.id}"><td><b class="mono">${esc(lotName(b.lotId))}</b>${exTag(b)}<span class="sub">${esc(lotCiteName(b.lotId))}</span></td><td>${esc(tiersName(b.tiersId))}</td><td>${fmtDate(b.debut)}</td><td class="n">${money(c.mens)}</td><td class="n" style="${c.impaye > .5 ? 'color:var(--bad);font-weight:600' : ''}">${c.impaye > .5 ? money(c.impaye) + `<span class="sub">${c.nbImp} mois</span>` : 'À jour'}</td><td>${chip(b.statut)}</td><td class="n">${!READONLY && b.statut === 'Actif' ? `<button class="btn sm" data-a="payrent" data-id="${b.id}">Encaisser</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7"><div class="empty">Aucun bail dans cet onglet.</div></td></tr>'}
+    </tbody></table></div></div>`};
+}
+
+/* --- Espaces communs --- */
+function vEspaces() {
+  if (loading()) return {html: emptyState('Chargement…', '')};
+  if (!S.cites.length) return {html: emptyState('Créez d’abord une cité', 'Les espaces communs (piscine, salle polyvalente, parking…) sont rattachés à une cité.', addBtn('cites'))};
+  if (!S.espaces.length) return {actions: addBtn('espaces'), html: emptyState('Aucun espace commun', 'Déclarez les espaces partagés de vos cités pour gérer leurs réservations et leur état.', addBtn('espaces'))};
+  const up = []; S.espaces.forEach(e => (e.reservations || []).forEach(r => { if (r.date >= TODAY && r.statut !== 'Annulée') up.push({e, r}); }));
+  up.sort((a, b) => (a.r.date + (a.r.debut || '')).localeCompare(b.r.date + (b.r.debut || '')));
+  return {actions: csvBtn('reservations') + addBtn('espaces'), html: `<div class="grid" style="gap:16px">
+    <div class="grid g-cards">${S.espaces.map(e => { const n = (e.reservations || []).filter(r => r.date >= TODAY && r.statut !== 'Annulée').length; return `<button class="card" data-a="open" data-k="espace" data-id="${e.id}">
+      <div style="display:flex;justify-content:space-between;gap:8px"><div><h3>${esc(e.nom)}${exTag(e)}</h3><div class="meta">${esc(e.type || '')} · ${esc(citeName(e.citeId))}</div></div>${chip(e.statut)}</div>
+      <div class="kv"><div><span>Capacité</span><b>${e.capacite ? esc(e.capacite) : '—'}</b></div><div><span>Tarif</span><b>${num(e.tarif) ? moneyShort(e.tarif) : 'Gratuit'}</b></div><div><span>À venir</span><b>${n} résa.</b></div></div>
+      ${e.horaires ? `<div class="meta">Horaires : ${esc(e.horaires)}</div>` : ''}</button>`; }).join('')}</div>
+    <section class="panel"><div class="ph"><h2>Réservations à venir</h2><p>${up.length} réservation(s)</p></div>
+    ${up.length ? `<div class="tbl"><table><thead><tr><th>Date</th><th>Créneau</th><th>Espace</th><th>Bénéficiaire</th><th>Objet</th><th class="n">Montant</th><th>Statut</th></tr></thead><tbody>${up.map(({e, r}) => `<tr class="click" data-a="open" data-k="espace" data-id="${e.id}"><td>${fmtDate(r.date)}</td><td class="mono">${esc(r.debut || '')}–${esc(r.fin || '')}</td><td>${esc(e.nom)}</td><td>${esc(r.beneficiaire || '—')}</td><td>${esc(r.objet || '')}</td><td class="n">${num(r.montant) ? money(r.montant) : '—'}</td><td>${chip(r.statut)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aucune réservation à venir.</div>'}</section></div>`};
+}
+
+/* --- Syndic --- */
+function vSyndic() {
+  if (loading()) return {html: emptyState('Chargement…', '')};
+  if (!S.cites.length) return {html: emptyState('Créez d’abord une cité', 'Les cotisations et dépenses communes sont tenues par cité.', addBtn('cites'))};
+  const tab = UI.f.syndicTab || 'Dépenses';
+  const ycot = c => S.cotisations.filter(x => x.citeId === c.id && (x.date || '').startsWith(THIS_YEAR)).reduce((s, x) => s + num(x.montant), 0);
+  const ydep = c => S.charges.filter(x => x.citeId === c.id && (x.date || '').startsWith(THIS_YEAR)).reduce((s, x) => s + num(x.montant), 0);
+  const assuj = c => S.lots.filter(l => l.citeId === c.id && (l.statut === 'Vendu' || l.statut === 'Loué')).length;
+  const moisCot = c => S.cotisations.filter(x => x.citeId === c.id && x.mois === THIS_MONTH).reduce((s, x) => s + num(x.montant), 0);
+  const deps = S.charges.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const cots = S.cotisations.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return {actions: (tab === 'Dépenses' ? csvBtn('charges') : csvBtn('cotisations')) + (READONLY ? '' : `<button class="btn" data-a="new" data-c="cotisations">+ Encaisser une cotisation</button>`) + addBtn('charges'), html: `<div class="grid" style="gap:16px">
+    <section class="panel"><div class="ph"><h2>Situation des syndics — ${THIS_YEAR}</h2><p>Lots assujettis : vendus ou loués</p></div>
+    <div class="tbl"><table><thead><tr><th>Cité</th><th class="n">Lots assujettis</th><th class="n">Appel mensuel</th><th>Recouvrement ${esc(fmtMonth(THIS_MONTH))}</th><th class="n">Cotisations ${THIS_YEAR}</th><th class="n">Dépenses ${THIS_YEAR}</th><th class="n">Solde</th></tr></thead><tbody>
+    ${S.cites.map(c => { const app = assuj(c) * num(c.cotisation), m = moisCot(c), sol = ycot(c) - ydep(c); return `<tr><td><b>${esc(c.nom)}</b><span class="sub">${num(c.cotisation) ? money(c.cotisation) + ' / lot / mois' : 'Cotisation non définie'}</span></td><td class="n">${assuj(c)}</td><td class="n">${money(app)}</td><td><div class="bar"><i style="width:${app ? Math.min(100, m / app * 100) : 0}%"></i></div><span class="sub">${money(m)}${app ? ' · ' + pct(Math.min(1, m / app)) : ''}</span></td><td class="n">${money(ycot(c))}</td><td class="n">${money(ydep(c))}</td><td class="n" style="font-weight:700;color:${sol < 0 ? 'var(--bad)' : 'var(--ok)'}">${money(sol)}</td></tr>`; }).join('')}
+    </tbody></table></div></section>
+    <div class="tabs">${['Dépenses', 'Cotisations'].map(t => `<button data-a="tab" data-k="syndicTab" data-v="${t}" aria-pressed="${tab === t}">${t === 'Dépenses' ? 'Dépenses communes' : 'Cotisations encaissées'}</button>`).join('')}</div>
+    ${tab === 'Dépenses' ? (deps.length ? `<div class="tbl"><table><thead><tr><th>Date</th><th>Libellé</th><th>Cité</th><th>Catégorie</th><th>Fournisseur</th><th class="n">Montant</th><th>Règlement</th></tr></thead><tbody>${deps.map(d => `<tr class="click" data-a="edit" data-c="charges" data-id="${d.id}"><td>${fmtDate(d.date)}</td><td><b>${esc(d.libelle)}</b>${exTag(d)}</td><td>${esc(citeName(d.citeId))}</td><td>${esc(d.categorie || '')}</td><td>${esc(d.fournisseur || '')}</td><td class="n">${money(d.montant)}</td><td>${chip(d.statut)}</td></tr>`).join('')}</tbody></table></div>` : emptyState('Aucune dépense commune', 'Gardiennage, électricité des voies, entretien des espaces verts… saisissez ici les charges de chaque cité.', addBtn('charges')))
+    : (cots.length ? `<div class="tbl"><table><thead><tr><th>Encaissée le</th><th>Mois</th><th>Lot</th><th>Cité</th><th>Mode</th><th class="n">Montant</th></tr></thead><tbody>${cots.map(d => `<tr class="click" data-a="edit" data-c="cotisations" data-id="${d.id}"><td>${fmtDate(d.date)}</td><td>${fmtMonth(d.mois)}</td><td class="mono">${esc(lotName(d.lotId))}${exTag(d)}</td><td>${esc(citeName(d.citeId))}</td><td>${esc(d.mode || '')}</td><td class="n">${money(d.montant)}</td></tr>`).join('')}</tbody></table></div>` : emptyState('Aucune cotisation encaissée', 'Enregistrez les cotisations versées par les propriétaires pour suivre le recouvrement du syndic.', READONLY ? '' : `<button class="btn primary" data-a="new" data-c="cotisations">+ Encaisser une cotisation</button>`))}
+  </div>`};
+}
+
+/* --- Maintenance --- */
+function vInterventions() {
+  if (loading()) return {html: emptyState('Chargement…', '')};
+  if (!S.cites.length) return {html: emptyState('Créez d’abord une cité', 'Les interventions sont rattachées à une cité.', addBtn('cites'))};
+  const cols = ['Signalée', 'Planifiée', 'En cours', 'Terminée'];
+  const pr = ['Urgente', 'Haute', 'Normale', 'Basse'];
+  return {actions: csvBtn('interventions') + addBtn('interventions'), html: `<div class="kanban">${cols.map((s, ci) => { const items = S.interventions.filter(i => (i.statut || 'Signalée') === s).sort((a, b) => pr.indexOf(a.priorite) - pr.indexOf(b.priorite)); return `<div class="col"><h3><span>${s}</span><span style="color:var(--muted)">${items.length}</span></h3>
+    ${items.map(i => `<div class="tk" data-a="edit" data-c="interventions" data-id="${i.id}" tabindex="0" role="button"><b>${esc(i.titre)}${exTag(i)}</b><span class="meta">${esc(citeName(i.citeId))}${i.lieu ? ' · ' + esc(i.lieu) : ''}</span>
+      <div class="row">${chip(i.priorite || 'Normale')}<span class="meta">${esc(i.categorie || '')}</span></div>
+      <div class="row"><span class="meta">${i.prestataireId ? esc(tiersName(i.prestataireId)) : 'Sans prestataire'}${i.date ? ' · ' + fmtDate(i.date) : ''}</span>${num(i.cout) ? `<span class="meta num">${money(i.cout)}</span>` : ''}</div>
+      ${READONLY ? '' : `<div class="row">${ci > 0 ? `<button class="btn sm ghost" data-a="mv" data-id="${i.id}" data-d="-1">← ${cols[ci - 1]}</button>` : '<span></span>'}${ci < 3 ? `<button class="btn sm" data-a="mv" data-id="${i.id}" data-d="1">${cols[ci + 1]} →</button>` : ''}</div>`}
+    </div>`).join('') || '<div class="empty" style="padding:14px">Rien ici.</div>'}</div>`; }).join('')}</div>`};
+}
+
+/* --- Tiers --- */
+function vTiers() {
+  if (loading()) return {html: emptyState('Chargement…', '')};
+  if (!S.tiers.length) return {actions: addBtn('tiers'), html: emptyState('Aucun contact', 'Acquéreurs, locataires, propriétaires et prestataires : enregistrez-les ici pour les rattacher aux ventes, baux et interventions.', addBtn('tiers'))};
+  const tab = UI.f.tiersTab || 'Tous'; const q = (UI.f.tiersQ || '').toLowerCase();
+  const rows = S.tiers.filter(t => (tab === 'Tous' || t.categorie === tab) && (!q || [t.nom, t.tel, t.email].join(' ').toLowerCase().includes(q))).sort((a, b) => String(a.nom).localeCompare(String(b.nom), 'fr'));
+  const du = t => S.ventes.filter(v => v.tiersId === t.id).reduce((s, v) => s + venteCalc(v).retard, 0) + S.baux.filter(b => b.tiersId === t.id).reduce((s, b) => s + bailCalc(b).impaye, 0);
+  return {actions: csvBtn('tiers') + addBtn('tiers'), html: `<div class="grid" style="gap:14px">
+    <div class="filters"><input id="flt_tiers_q" type="search" placeholder="Rechercher un nom, un téléphone, un e-mail…" data-f="tiersQ" value="${esc(UI.f.tiersQ || '')}"></div>
+    <div class="tabs">${['Tous', 'Acquéreur', 'Locataire', 'Propriétaire', 'Prestataire', 'Prospect'].map(t => `<button data-a="tab" data-k="tiersTab" data-v="${t}" aria-pressed="${tab === t}">${t === 'Tous' ? 'Tous' : t + 's'}</button>`).join('')}</div>
+    <div class="tbl"><table><thead><tr><th>Nom</th><th>Catégorie</th><th>Téléphone</th><th>E-mail</th><th class="n">Ventes</th><th class="n">Baux</th><th class="n">Montant dû</th></tr></thead><tbody>
+    ${rows.map(t => { const d = du(t); return `<tr class="click" data-a="open" data-k="tiers" data-id="${t.id}"><td><b>${esc(t.nom)}</b>${exTag(t)}</td><td>${esc(t.categorie || '—')}</td><td class="mono">${esc(t.tel || '—')}</td><td>${esc(t.email || '—')}</td><td class="n">${S.ventes.filter(v => v.tiersId === t.id).length}</td><td class="n">${S.baux.filter(b => b.tiersId === t.id).length}</td><td class="n" style="${d > .5 ? 'color:var(--bad);font-weight:600' : ''}">${d > .5 ? money(d) : '—'}</td></tr>`; }).join('') || '<tr><td colspan="7"><div class="empty">Aucun contact dans cette catégorie.</div></td></tr>'}
+    </tbody></table></div></div>`};
+}
+
+/* --- Paramètres --- */
+function vParams() {
+  const nEx = COLS.reduce((s, c) => s + S[c].filter(x => x.exemple).length, 0);
+  const total = COLS.reduce((s, c) => s + S[c].length, 0);
+  return {html: `<div class="grid g-2" style="align-items:start">
+    <section class="panel"><div class="ph"><h2>Agence</h2></div>
+      <form id="cfgForm" class="form"><div class="grid2">
+        <div class="fld"><label for="cfg_societe">Nom de l’agence ou du gestionnaire</label><input id="cfg_societe" name="societe" value="${esc(CFG.societe || '')}" ${READONLY ? 'disabled' : ''}></div>
+        <div class="fld half"><label for="cfg_devise">Devise</label><input id="cfg_devise" name="devise" list="devises" value="${esc(CFG.devise || '')}" ${READONLY ? 'disabled' : ''}><datalist id="devises"><option value="FCFA"><option value="USD"><option value="CDF"><option value="EUR"><option value="XOF"><option value="XAF"><option value="MAD"><option value="GNF"></datalist></div>
+        <div class="fld half"><label for="cfg_tel">Téléphone de l’agence</label><input id="cfg_tel" name="tel" value="${esc(CFG.tel || '')}" ${READONLY ? 'disabled' : ''}></div>
+        <div class="fld"><label for="cfg_adresse">Adresse (figure sur les quittances)</label><input id="cfg_adresse" name="adresse" value="${esc(CFG.adresse || '')}" ${READONLY ? 'disabled' : ''}></div>
+      </div>${READONLY ? '' : '<div class="formbar"><span class="sp"></span><button class="btn primary">Enregistrer</button></div>'}</form>
+    </section>
+    <section class="panel"><div class="ph"><h2>Données</h2><p>${total} enregistrement(s)</p></div>
+      <div class="list">
+        <div class="li"><div class="t"><b>Sauvegarde complète</b><span>Toutes les cités, lots, ventes, baux et charges au format JSON.</span></div><button class="btn sm" data-a="backup">Télécharger</button></div>
+        <div class="li"><div class="t"><b>Données d’exemple</b><span>${nEx ? nEx + ' enregistrement(s) marqués « exemple » pour découvrir l’application.' : 'Aucune donnée d’exemple.'}</span></div>${nEx && !READONLY ? '<button class="btn sm danger" data-a="purge">Supprimer les exemples</button>' : ''}</div>
+        <div class="li"><div class="t"><b>Stockage</b><span>${MODE === 'cloud' ? 'Base partagée : toute personne ayant accès à cette application voit les mêmes données.' : 'Navigateur local uniquement.'}</span></div></div>
+      </div>
+    </section></div>`};
+}
+const VIEWS_R = {dashboard: vDashboard, cites: vCites, lots: vLots, ventes: vVentes, baux: vBaux, espaces: vEspaces, syndic: vSyndic, interventions: vInterventions, tiers: vTiers, params: vParams};
+
+/* ---------- tiroir de détail ---------- */
+function renderDrawer() {
+  const root = $('#drawerRoot'); const d = UI.drawer;
+  if (!d) { root.innerHTML = ''; return; }
+  const map = {cite: ['cites', dCite], vente: ['ventes', dVente], bail: ['baux', dBail], espace: ['espaces', dEspace], tiers: ['tiers', dTiers]};
+  const [col, fn] = map[d.k]; const rec = byId(col, d.id);
+  if (!rec) { if (!loading()) { UI.drawer = null; root.innerHTML = ''; } return; }
+  const r = fn(rec);
+  const scroll = root.querySelector('.db')?.scrollTop || 0;
+  root.innerHTML = `<div class="scrim" data-a="closeDrawer"></div><aside class="drawer" role="dialog" aria-modal="true" aria-label="${esc(r.title)}"><div class="dh"><div><p class="eyebrow">${r.eyebrow}</p><h2>${esc(r.title)}</h2>${r.sub ? `<div style="color:var(--muted);font-size:13px;margin-top:4px">${r.sub}</div>` : ''}</div><button class="x" data-a="closeDrawer" aria-label="Fermer">×</button></div><div class="db">${r.body}</div></aside>`;
+  root.querySelector('.db').scrollTop = scroll;
+}
+function dCite(c) {
+  const ls = S.lots.filter(l => l.citeId === c.id).sort((a, b) => String(a.ref).localeCompare(String(b.ref), 'fr', {numeric: true}));
+  const ilots = {}; ls.forEach(l => (ilots[l.ilot || 'Sans îlot'] = ilots[l.ilot || 'Sans îlot'] || []).push(l));
+  const esp = S.espaces.filter(e => e.citeId === c.id);
+  const surf = ls.reduce((s, l) => s + num(l.surface), 0);
+  const ca = S.ventes.filter(v => byId('lots', v.lotId)?.citeId === c.id).reduce((s, v) => s + num(v.prix), 0);
+  return {eyebrow: 'Cité · ' + esc(c.statut || ''), title: c.nom, sub: esc([c.quartier, c.ville].filter(Boolean).join(', ')) + (c.promoteur ? ' · ' + esc(c.promoteur) : ''), body: `
+    <div class="sumrow"><div><span>Lots</span><b>${ls.length}</b></div><div><span>Surface lotie</span><b>${nf.format(surf)} m²</b></div><div><span>Ventes signées</span><b>${money(ca)}</b></div><div><span>Cotisation</span><b>${num(c.cotisation) ? money(c.cotisation) : '—'}</b></div></div>
+    <div><h3>Plan de lotissement</h3>${ls.length ? `<div class="plan">${Object.entries(ilots).map(([k, arr]) => `<div class="ilot"><span>${esc(k)}</span><div class="plots">${arr.map(l => `<button class="plot f-${esc(l.statut || 'Disponible')}" data-a="edit" data-c="lots" data-id="${l.id}" title="${esc(l.ref)} · ${esc(l.type || '')} · ${l.surface ? nf.format(l.surface) + ' m²' : ''} · ${esc(l.statut || 'Disponible')}">${esc(String(l.ref).slice(-5))}</button>`).join('')}</div></div>`).join('')}</div>
+      <div class="legend" style="margin-top:10px">${['Disponible', 'Réservé', 'Vendu', 'Loué', 'Indisponible'].map(s => `<span><i class="f-${s}"></i>${s}</span>`).join('')}</div>` : '<div class="empty">Aucun lot dans cette cité.</div>'}
+      ${READONLY ? '' : `<div style="margin-top:10px"><button class="btn sm" data-a="new" data-c="lots" data-pre='${esc(JSON.stringify({citeId: c.id}))}'>+ Ajouter un lot</button></div>`}</div>
+    <div><h3>Espaces communs</h3>${esp.length ? `<div class="list">${esp.map(e => `<div class="li"><div class="t"><b>${esc(e.nom)}</b><span>${esc(e.type || '')}</span></div>${chip(e.statut)}</div>`).join('')}</div>` : '<div class="empty">Aucun espace commun déclaré.</div>'}</div>
+    ${c.notes ? `<div><h3>Notes</h3><p style="margin:0;white-space:pre-wrap">${esc(c.notes)}</p></div>` : ''}
+    ${READONLY ? '' : `<div class="formbar"><button class="btn" data-a="edit" data-c="cites" data-id="${c.id}">Modifier la cité</button></div>`}`};
+}
+function dVente(v) {
+  const c = venteCalc(v); const lot = byId('lots', v.lotId);
+  const pays = (v.paiements || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  return {eyebrow: 'Vente · ' + esc(c.statut), title: `Lot ${lotName(v.lotId)} — ${tiersName(v.tiersId)}`, sub: `${esc(lotCiteName(v.lotId))}${lot?.surface ? ' · ' + nf.format(lot.surface) + ' m²' : ''}${lot?.titre ? ' · TF ' + esc(lot.titre) : ''} · signée le ${fmtDate(v.date)}`, body: `
+    <div class="sumrow"><div><span>Prix</span><b>${money(c.prix)}</b></div><div><span>Encaissé</span><b>${money(c.paid)}</b></div><div><span>Reste</span><b>${money(c.reste)}</b></div><div><span>En retard</span><b style="color:${c.retard > .5 ? 'var(--bad)' : 'inherit'}">${money(c.retard)}</b></div></div>
+    <div class="bar" style="height:8px"><i style="width:${c.ratio * 100}%"></i></div>
+    ${READONLY ? '' : `<div class="formbar" style="margin:0"><button class="btn primary" data-a="payvente" data-id="${v.id}">+ Enregistrer un paiement</button><button class="btn" data-a="releve" data-id="${v.id}">Relevé de compte</button><span class="sp"></span><button class="btn ghost" data-a="edit" data-c="ventes" data-id="${v.id}">Modifier</button></div>`}
+    <div><h3>Échéancier</h3><div class="tbl"><table><thead><tr><th>Échéance</th><th>Date</th><th class="n">Montant</th><th class="n">Réglé</th><th>État</th></tr></thead><tbody>${c.sched.map(e => `<tr><td>${esc(e.label)}</td><td>${fmtDate(e.date)}</td><td class="n">${money(e.montant)}</td><td class="n">${money(e.paye)}</td><td>${chip(e.etat)}</td></tr>`).join('')}</tbody></table></div></div>
+    <div><h3>Paiements reçus</h3>${pays.length ? `<div class="tbl"><table><thead><tr><th>Date</th><th>Mode</th><th>Référence</th><th class="n">Montant</th><th></th></tr></thead><tbody>${pays.map(p => `<tr><td>${fmtDate(p.date)}</td><td>${esc(p.mode || '')}</td><td class="mono">${esc(p.ref || '')}</td><td class="n">${money(p.montant)}</td><td class="n">${READONLY ? '' : `<button class="btn sm ghost danger" data-a="delpay" data-c="ventes" data-id="${v.id}" data-p="${p.id}" aria-label="Supprimer ce paiement">Retirer</button>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aucun paiement reçu.</div>'}</div>
+    ${v.notaire || v.notes ? `<div><h3>Acte & notes</h3><p style="margin:0;white-space:pre-wrap">${esc([v.notaire, v.notes].filter(Boolean).join('\n'))}</p></div>` : ''}`};
+}
+function dBail(b) {
+  const c = bailCalc(b); const pays = (b.paiements || []).slice().sort((x, y) => (y.date || '').localeCompare(x.date || ''));
+  return {eyebrow: 'Bail · ' + esc(b.statut || ''), title: `${lotName(b.lotId)} — ${tiersName(b.tiersId)}`, sub: `${esc(lotCiteName(b.lotId))} · entrée le ${fmtDate(b.debut)}${num(b.duree) ? ' · ' + num(b.duree) + ' mois' : ' · durée indéterminée'}`, body: `
+    <div class="sumrow"><div><span>Loyer + charges</span><b>${money(c.mens)}</b></div><div><span>Caution</span><b>${money(b.caution)}</b></div><div><span>Total versé</span><b>${money(c.paid)}</b></div><div><span>Impayés</span><b style="color:${c.impaye > .5 ? 'var(--bad)' : 'inherit'}">${money(c.impaye)}</b></div></div>
+    ${READONLY ? '' : `<div class="formbar" style="margin:0">${b.statut === 'Actif' ? `<button class="btn primary" data-a="payrent" data-id="${b.id}">+ Encaisser un loyer</button>` : ''}<span class="sp"></span><button class="btn ghost" data-a="edit" data-c="baux" data-id="${b.id}">Modifier le bail</button></div>`}
+    <div><h3>Loyers mois par mois</h3>${c.rows.length ? `<div class="months">${c.rows.slice().reverse().map(r => `<div class="mo s-${ST[r.etat]}"><b>${fmtMonth(r.m)}</b><span>${r.etat}</span></div>`).join('')}</div>` : '<div class="empty">Le bail n’a pas encore commencé.</div>'}</div>
+    <div><h3>Encaissements & quittances</h3>${pays.length ? `<div class="tbl"><table><thead><tr><th>Mois</th><th>Payé le</th><th>Mode</th><th class="n">Montant</th><th></th></tr></thead><tbody>${pays.map(p => `<tr><td>${fmtMonth(p.mois)}</td><td>${fmtDate(p.date)}</td><td>${esc(p.mode || '')}</td><td class="n">${money(p.montant)}</td><td class="n" style="white-space:nowrap"><button class="btn sm" data-a="quittance" data-id="${b.id}" data-p="${p.id}">Quittance</button>${READONLY ? '' : ` <button class="btn sm ghost danger" data-a="delpay" data-c="baux" data-id="${b.id}" data-p="${p.id}">Retirer</button>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aucun loyer encaissé.</div>'}</div>
+    ${b.notes ? `<div><h3>Notes</h3><p style="margin:0;white-space:pre-wrap">${esc(b.notes)}</p></div>` : ''}`};
+}
+function dEspace(e) {
+  const rs = (e.reservations || []).slice().sort((a, b) => (b.date + (b.debut || '')).localeCompare(a.date + (a.debut || '')));
+  const rec = rs.filter(r => r.statut === 'Confirmée').reduce((s, r) => s + num(r.montant), 0);
+  return {eyebrow: 'Espace commun · ' + esc(e.statut || ''), title: e.nom, sub: `${esc(e.type || '')} · ${esc(citeName(e.citeId))}${e.horaires ? ' · ' + esc(e.horaires) : ''}`, body: `
+    <div class="sumrow"><div><span>Capacité</span><b>${esc(e.capacite || '—')}</b></div><div><span>Tarif</span><b>${num(e.tarif) ? money(e.tarif) : 'Gratuit'}</b></div><div><span>Réservations</span><b>${rs.length}</b></div><div><span>Recettes</span><b>${money(rec)}</b></div></div>
+    ${READONLY ? '' : `<div class="formbar" style="margin:0">${e.statut === 'Ouvert' || !e.statut ? `<button class="btn primary" data-a="resa" data-id="${e.id}">+ Nouvelle réservation</button>` : `<span style="color:var(--muted);font-size:13px">Réservations suspendues : espace ${esc(e.statut.toLowerCase())}.</span>`}<span class="sp"></span><button class="btn ghost" data-a="edit" data-c="espaces" data-id="${e.id}">Modifier l’espace</button></div>`}
+    <div><h3>Réservations</h3>${rs.length ? `<div class="tbl"><table><thead><tr><th>Date</th><th>Créneau</th><th>Bénéficiaire</th><th class="n">Montant</th><th>Statut</th><th></th></tr></thead><tbody>${rs.map(r => `<tr><td>${fmtDate(r.date)}</td><td class="mono">${esc(r.debut || '')}–${esc(r.fin || '')}</td><td>${esc(r.beneficiaire || '')}<span class="sub">${esc(r.objet || '')}</span></td><td class="n">${num(r.montant) ? money(r.montant) : '—'}</td><td>${chip(r.statut)}</td><td class="n">${READONLY ? '' : `<button class="btn sm ghost" data-a="editresa" data-id="${e.id}" data-p="${r.id}">Modifier</button>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aucune réservation.</div>'}</div>
+    ${e.notes ? `<div><h3>Règlement</h3><p style="margin:0;white-space:pre-wrap">${esc(e.notes)}</p></div>` : ''}`};
+}
+function dTiers(t) {
+  const vs = S.ventes.filter(v => v.tiersId === t.id), bs = S.baux.filter(b => b.tiersId === t.id), is = S.interventions.filter(i => i.prestataireId === t.id);
+  return {eyebrow: esc(t.categorie || 'Contact'), title: t.nom, sub: [t.tel, t.email].filter(Boolean).map(esc).join(' · '), body: `
+    <div class="sumrow"><div><span>Téléphone</span><b class="mono" style="font-size:13px">${esc(t.tel || '—')}</b></div><div><span>Pièce / RCCM</span><b style="font-size:13px">${esc(t.piece || '—')}</b></div></div>
+    ${t.tel ? `<div class="formbar" style="margin:0"><button class="btn sm" data-a="copy" data-v="${esc(t.tel)}">Copier le numéro</button>${t.email ? `<button class="btn sm" data-a="copy" data-v="${esc(t.email)}">Copier l’e-mail</button>` : ''}</div>` : ''}
+    <div><h3>Achats</h3>${vs.length ? `<div class="list">${vs.map(v => { const c = venteCalc(v); return `<div class="li"><div class="t"><b>Lot ${esc(lotName(v.lotId))} · ${esc(lotCiteName(v.lotId))}</b><span>${money(c.paid)} / ${money(c.prix)}</span></div><button class="btn sm" data-a="open" data-k="vente" data-id="${v.id}">${esc(c.statut)}</button></div>`; }).join('')}</div>` : '<div class="empty">Aucun achat.</div>'}</div>
+    <div><h3>Locations</h3>${bs.length ? `<div class="list">${bs.map(b => { const c = bailCalc(b); return `<div class="li"><div class="t"><b>${esc(lotName(b.lotId))} · ${esc(lotCiteName(b.lotId))}</b><span>${money(c.mens)} / mois · ${c.impaye > .5 ? money(c.impaye) + ' impayés' : 'à jour'}</span></div><button class="btn sm" data-a="open" data-k="bail" data-id="${b.id}">${esc(b.statut)}</button></div>`; }).join('')}</div>` : '<div class="empty">Aucune location.</div>'}</div>
+    ${is.length ? `<div><h3>Interventions confiées</h3><div class="list">${is.map(i => `<div class="li"><div class="t"><b>${esc(i.titre)}</b><span>${esc(citeName(i.citeId))}</span></div>${chip(i.statut)}</div>`).join('')}</div></div>` : ''}
+    ${t.adresse || t.notes ? `<div><h3>Adresse & notes</h3><p style="margin:0;white-space:pre-wrap">${esc([t.adresse, t.notes].filter(Boolean).join('\n'))}</p></div>` : ''}
+    ${READONLY ? '' : `<div class="formbar"><button class="btn" data-a="edit" data-c="tiers" data-id="${t.id}">Modifier le contact</button></div>`}`};
+}
+
+/* ---------- fenêtres modales ---------- */
+let modalHandler = null;
+function modal(html, onSubmit) {
+  $('#modalRoot').innerHTML = `<div class="modal" role="dialog" aria-modal="true"><div class="scrim" data-a="closeModal"></div><div class="mbox">${html}</div></div>`;
+  modalHandler = onSubmit;
+  const f = $('#modalRoot').querySelector('input:not([type=hidden]),select,textarea,button.primary'); if (f) f.focus();
+}
+function closeModal() { $('#modalRoot').innerHTML = ''; modalHandler = null; }
+function confirmBox(msg, label, onYes) {
+  modal(`<h2>Confirmer</h2><p style="margin:0">${msg}</p><div class="formbar"><span class="sp"></span><button class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary" data-a="confirmYes" style="background:var(--bad);border-color:var(--bad);color:#fff">${label}</button></div>`);
+  modalHandler = onYes;
+}
+function fieldHtml(f, v, prefix = 'f') {
+  const id = `${prefix}_${f.k}`; const val = v ?? '';
+  let input;
+  if (f.t === 'select') input = `<select id="${id}" name="${f.k}">${f.o.map(o => `<option ${String(val) === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  else if (f.t === 'ref') { const list = S[f.ref].slice().sort((a, b) => LABEL[f.ref](a).localeCompare(LABEL[f.ref](b), 'fr', {numeric: true})); input = `<select id="${id}" name="${f.k}" ${f.req ? 'required' : ''}><option value="">${list.length ? '— Choisir —' : '— Aucun enregistrement —'}</option>${list.map(x => `<option value="${x.id}" ${val === x.id ? 'selected' : ''}>${esc(LABEL[f.ref](x))}</option>`).join('')}</select>`; }
+  else if (f.t === 'textarea') input = `<textarea id="${id}" name="${f.k}">${esc(val)}</textarea>`;
+  else input = `<input id="${id}" name="${f.k}" type="${f.t || 'text'}" ${f.t === 'number' ? `step="${f.step || '1'}" min="0" inputmode="decimal"` : ''} value="${esc(val)}" ${f.req ? 'required' : ''} ${f.ph ? `placeholder="${esc(f.ph)}"` : ''}>`;
+  return `<div class="fld ${f.half ? 'half' : ''}"><label for="${id}">${esc(f.l)}${f.req ? ' *' : ''}</label>${input}${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ''}</div>`;
+}
+function readForm(form, fields) {
+  const o = {}; fields.forEach(f => { const el = form.elements[f.k]; if (!el) return; let v = el.value.trim(); if (f.t === 'number') v = v === '' ? '' : Number(v.replace(',', '.')); o[f.k] = v; }); return o;
+}
+const DEFAULTS = {
+  cites: () => ({statut: 'Commercialisation'}), lots: () => ({statut: 'Disponible', type: 'Terrain viabilisé', citeId: UI.f.lots?.cite || ''}),
+  tiers: () => ({categorie: 'Acquéreur'}), ventes: () => ({date: TODAY, mode: 'Échelonné', nbEcheances: 12, premiere: addMonths(TODAY, 1)}),
+  baux: () => ({debut: TODAY, statut: 'Actif', duree: 12}), espaces: () => ({statut: 'Ouvert', type: 'Salle polyvalente'}),
+  charges: () => ({date: TODAY, statut: 'À payer'}), cotisations: () => ({date: TODAY, mois: THIS_MONTH, mode: 'Mobile money'}),
+  interventions: () => ({statut: 'Signalée', priorite: 'Normale', date: TODAY}),
+};
+function openForm(col, rec) {
+  const sc = SCHEMA[col]; const isNew = !rec || !rec.id; const data = isNew ? {...DEFAULTS[col](), ...(rec || {})} : rec;
+  modal(`<form id="mainForm" class="form" novalidate><h2>${isNew ? sc.nouveau : 'Modifier ' + sc.titre}</h2><div class="grid2">${sc.fields.map(f => fieldHtml(f, data[f.k])).join('')}</div><div class="err" id="formErr" hidden></div>
+    <div class="formbar">${!isNew ? `<button type="button" class="btn ghost danger" data-a="del" data-c="${col}" data-id="${rec.id}">Supprimer</button>` : ''}<span class="sp"></span><button type="button" class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary">Enregistrer</button></div></form>`,
+    async form => {
+      const vals = readForm(form, sc.fields);
+      const miss = sc.fields.filter(f => f.req && (vals[f.k] === '' || vals[f.k] == null));
+      const err = $('#formErr');
+      if (miss.length) { err.hidden = false; err.textContent = 'Champs obligatoires manquants : ' + miss.map(f => f.l).join(', ') + '.'; return; }
+      const body = {...data, ...vals};
+      if (col === 'ventes') {
+        if (num(body.acompte) > num(body.prix)) { err.hidden = false; err.textContent = 'L’acompte dépasse le prix de vente.'; return; }
+        if (body.mode === 'Échelonné' && !(num(body.nbEcheances) > 0)) { err.hidden = false; err.textContent = 'Indiquez le nombre de mensualités, ou choisissez « Comptant ».'; return; }
+        if (isNew) body.paiements = num(body.acompte) > 0 ? [{id: uid(), date: body.date, montant: num(body.acompte), mode: 'Acompte', ref: ''}] : [];
+        const other = S.ventes.find(v => v.lotId === body.lotId && v.id !== body.id);
+        if (other) { err.hidden = false; err.textContent = `Ce lot est déjà vendu à ${tiersName(other.tiersId)}.`; return; }
+      }
+      if (col === 'baux' && isNew) body.paiements = [];
+      if (col === 'espaces' && isNew) body.reservations = [];
+      if (col === 'lots') { const dup = S.lots.find(l => l.citeId === body.citeId && String(l.ref).toLowerCase() === String(body.ref).toLowerCase() && l.id !== body.id); if (dup) { err.hidden = false; err.textContent = 'Cette référence existe déjà dans la cité.'; return; } }
+      if (col === 'cotisations' && body.lotId) { const l = byId('lots', body.lotId); if (l && l.citeId !== body.citeId) { err.hidden = false; err.textContent = 'Le lot choisi n’appartient pas à cette cité.'; return; } }
+      form.querySelector('button.primary').disabled = true;
+      const id = await save(col, body);
+      if (!id) { form.querySelector('button.primary').disabled = false; return; }
+      // effets sur le statut des lots
+      if (col === 'ventes') await setLotStatut(body.lotId, 'Vendu');
+      if (col === 'baux') { if (body.statut === 'Actif') await setLotStatut(body.lotId, 'Loué'); else if (byId('lots', body.lotId)?.statut === 'Loué' && !S.baux.some(b => b.id !== id && b.lotId === body.lotId && b.statut === 'Actif')) await setLotStatut(body.lotId, 'Disponible'); }
+      closeModal(); toast(isNew ? 'Enregistré.' : 'Modifications enregistrées.');
+      if (isNew && col === 'ventes') { UI.drawer = {k: 'vente', id}; schedule(); }
+      if (isNew && col === 'baux') { UI.drawer = {k: 'bail', id}; schedule(); }
+    });
+  // pré-remplissage du prix et du loyer à partir du lot choisi
+  const lotSel = $('#f_lotId');
+  if (lotSel && (col === 'ventes' || col === 'baux')) lotSel.addEventListener('change', () => { const l = byId('lots', lotSel.value); if (!l) return; if (col === 'ventes' && !$('#f_prix').value) $('#f_prix').value = l.prix || ''; if (col === 'baux' && !$('#f_loyer').value) $('#f_loyer').value = l.loyer || ''; });
+  if (col === 'cotisations') { const ls = $('#f_lotId'); ls && ls.addEventListener('change', () => { const l = byId('lots', ls.value); if (!l) return; $('#f_citeId').value = l.citeId; const c = byId('cites', l.citeId); if (c && !$('#f_montant').value) $('#f_montant').value = c.cotisation || ''; }); }
+}
+async function setLotStatut(lotId, statut) { const l = byId('lots', lotId); if (l && l.statut !== statut) await save('lots', {...l, statut}); }
+
+const PAY_FIELDS = [{k: 'date', l: 'Date du paiement', t: 'date', req: 1, half: 1}, {k: 'montant', l: 'Montant', t: 'number', req: 1, half: 1}, {k: 'mode', l: 'Mode', t: 'select', o: MODES_PAY.slice(0, 4), half: 1}, {k: 'ref', l: 'Référence (reçu, transaction)', half: 1}];
+const RENT_FIELDS = [{k: 'mois', l: 'Mois concerné', t: 'month', req: 1, half: 1}, {k: 'montant', l: 'Montant', t: 'number', req: 1, half: 1}, {k: 'date', l: 'Payé le', t: 'date', req: 1, half: 1}, {k: 'mode', l: 'Mode', t: 'select', o: MODES_PAY.slice(0, 4), half: 1}];
+const RESA_FIELDS = [{k: 'date', l: 'Date', t: 'date', req: 1, half: 1}, {k: 'statut', l: 'Statut', t: 'select', o: ['Confirmée', 'En attente', 'Annulée'], half: 1}, {k: 'debut', l: 'Début', t: 'time', req: 1, half: 1}, {k: 'fin', l: 'Fin', t: 'time', req: 1, half: 1}, {k: 'beneficiaire', l: 'Bénéficiaire (résident, lot)', req: 1}, {k: 'objet', l: 'Objet', half: 1, ph: 'Anniversaire, réunion…'}, {k: 'montant', l: 'Montant facturé', t: 'number', half: 1}];
+
+function openSub(col, id, key, fields, title, init, validate) {
+  const rec = byId(col, id); if (!rec) return;
+  const existing = init.id ? init : null;
+  modal(`<form id="subForm" class="form" novalidate><h2>${title}</h2><div class="grid2">${fields.map(f => fieldHtml(f, init[f.k], 's')).join('')}</div><div class="err" id="formErr" hidden></div><div class="formbar">${existing ? `<button type="button" class="btn ghost danger" data-a="delsub" data-c="${col}" data-id="${id}" data-key="${key}" data-p="${existing.id}">Supprimer</button>` : ''}<span class="sp"></span><button type="button" class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary">Enregistrer</button></div></form>`,
+    async form => {
+      const vals = readForm(form, fields); const err = $('#formErr');
+      const miss = fields.filter(f => f.req && (vals[f.k] === '' || vals[f.k] == null));
+      if (miss.length) { err.hidden = false; err.textContent = 'Champs obligatoires manquants : ' + miss.map(f => f.l).join(', ') + '.'; return; }
+      const fresh = byId(col, id); const item = {...(existing || {}), ...vals, id: existing ? existing.id : uid()};
+      const msg = validate && validate(item, fresh); if (msg) { err.hidden = false; err.textContent = msg; return; }
+      const arr = (fresh[key] || []).filter(x => x.id !== item.id).concat(item);
+      form.querySelector('button.primary').disabled = true;
+      const ok = await save(col, {...fresh, [key]: arr});
+      if (ok) { closeModal(); toast('Enregistré.'); } else form.querySelector('button.primary').disabled = false;
+    });
+}
+
+/* ---------- documents & exports ---------- */
+async function download(filename, data) {
+  if (!DL) { toast('Le téléchargement n’est pas disponible dans cette vue.'); return; }
+  try { await DL.save({filename, data}); toast('Fichier prêt.'); }
+  catch (e) { if (e && e.code === 'declined') return; if (e && e.code === 'rate_limited') toast('Une demande de téléchargement est déjà ouverte.'); else toast('Téléchargement impossible dans cette vue.'); }
+}
+function csv(rows) { return '﻿' + rows.map(r => r.map(v => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(';')).join('\r\n'); }
+const CSV = {
+  cites: () => [['Cité', 'Ville', 'Quartier', 'Superficie (ha)', 'Phase', 'Promoteur', 'Cotisation', 'Lots'], ...S.cites.map(c => [c.nom, c.ville, c.quartier, c.superficie, c.statut, c.promoteur, c.cotisation, S.lots.filter(l => l.citeId === c.id).length])],
+  lots: () => [['Référence', 'Cité', 'Îlot', 'Type', 'Surface m²', 'Prix', 'Loyer', 'Titre foncier', 'Statut'], ...filteredLots().map(l => [l.ref, citeName(l.citeId), l.ilot, l.type, l.surface, l.prix, l.loyer, l.titre, l.statut])],
+  ventes: () => [['Lot', 'Cité', 'Acquéreur', 'Date', 'Modalité', 'Prix', 'Encaissé', 'Reste', 'En retard', 'Statut'], ...S.ventes.map(v => { const c = venteCalc(v); return [lotName(v.lotId), lotCiteName(v.lotId), tiersName(v.tiersId), v.date, v.mode, c.prix, c.paid, c.reste, c.retard, c.statut]; })],
+  baux: () => [['Bien', 'Cité', 'Locataire', 'Entrée', 'Loyer', 'Charges', 'Caution', 'Versé', 'Impayés', 'Statut'], ...S.baux.map(b => { const c = bailCalc(b); return [lotName(b.lotId), lotCiteName(b.lotId), tiersName(b.tiersId), b.debut, b.loyer, b.charges, b.caution, c.paid, c.impaye, b.statut]; })],
+  reservations: () => [['Espace', 'Cité', 'Date', 'Début', 'Fin', 'Bénéficiaire', 'Objet', 'Montant', 'Statut'], ...S.espaces.flatMap(e => (e.reservations || []).map(r => [e.nom, citeName(e.citeId), r.date, r.debut, r.fin, r.beneficiaire, r.objet, r.montant, r.statut]))],
+  charges: () => [['Date', 'Libellé', 'Cité', 'Catégorie', 'Fournisseur', 'Montant', 'Règlement'], ...S.charges.map(d => [d.date, d.libelle, citeName(d.citeId), d.categorie, d.fournisseur, d.montant, d.statut])],
+  cotisations: () => [['Encaissée le', 'Mois', 'Lot', 'Cité', 'Mode', 'Montant'], ...S.cotisations.map(d => [d.date, d.mois, lotName(d.lotId), citeName(d.citeId), d.mode, d.montant])],
+  interventions: () => [['Objet', 'Cité', 'Lieu', 'Catégorie', 'Priorité', 'Statut', 'Prestataire', 'Date', 'Coût'], ...S.interventions.map(i => [i.titre, citeName(i.citeId), i.lieu, i.categorie, i.priorite, i.statut, i.prestataireId ? tiersName(i.prestataireId) : '', i.date, i.cout])],
+  tiers: () => [['Nom', 'Catégorie', 'Téléphone', 'E-mail', 'Pièce', 'Adresse'], ...S.tiers.map(t => [t.nom, t.categorie, t.tel, t.email, t.piece, t.adresse])],
+};
+function docShell(title, inner) {
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(title)}</title><style>body{font:14px/1.5 Arial,Helvetica,sans-serif;color:#15211f;max-width:720px;margin:40px auto;padding:0 24px}h1{font-size:22px;margin:0 0 4px}.hd{display:flex;justify-content:space-between;border-bottom:2px solid #1d5b57;padding-bottom:12px;margin-bottom:24px}.mut{color:#5b6965}table{width:100%;border-collapse:collapse;margin:16px 0}td,th{border-bottom:1px solid #d8dfdb;padding:8px;text-align:left}td.n,th.n{text-align:right}.tot td{font-weight:bold;border-top:2px solid #15211f}.sig{margin-top:48px;display:flex;justify-content:space-between}</style></head><body>
+  <div class="hd"><div><strong>${esc(CFG.societe || 'Anayah Gestim')}</strong><div class="mut">${esc(CFG.adresse || '')}${CFG.tel ? '<br>' + esc(CFG.tel) : ''}</div></div><div class="mut" style="text-align:right">Édité le ${fmtDate(TODAY)}</div></div>${inner}</body></html>`;
+}
+function quittance(b, p) {
+  const t = byId('tiers', b.tiersId) || {}; const l = byId('lots', b.lotId) || {};
+  const loyer = num(b.loyer), ch = num(b.charges), tot = loyer + ch;
+  return docShell('Quittance de loyer', `<h1>Quittance de loyer</h1><p class="mut">Période : ${fmtMonth(p.mois)}</p>
+  <p>Je soussigné(e), ${esc(CFG.societe || 'le gestionnaire')}, déclare avoir reçu de <strong>${esc(t.nom || '')}</strong> la somme de <strong>${money(p.montant)}</strong>, au titre du loyer et des charges du bien <strong>${esc(l.ref || '')}</strong> (${esc(l.type || '')}) situé dans la cité ${esc(citeName(l.citeId))}, pour la période de ${fmtMonth(p.mois)}.</p>
+  <table><tr><th>Détail</th><th class="n">Montant</th></tr><tr><td>Loyer</td><td class="n">${money(loyer)}</td></tr><tr><td>Charges</td><td class="n">${money(ch)}</td></tr><tr class="tot"><td>Total dû pour la période</td><td class="n">${money(tot)}</td></tr><tr><td>Montant reçu le ${fmtDate(p.date)} (${esc(p.mode || '')})</td><td class="n">${money(p.montant)}</td></tr></table>
+  ${num(p.montant) < tot - .5 ? `<p><strong>Paiement partiel :</strong> il reste ${money(tot - num(p.montant))} à régler pour cette période. Le présent document vaut reçu et non quittance libératoire.</p>` : '<p>Cette quittance annule tout reçu donné pour acompte sur la période.</p>'}
+  <div class="sig"><span>Fait le ${fmtDate(TODAY)}</span><span>Signature du bailleur ou mandataire</span></div>`);
+}
+function releve(v) {
+  const c = venteCalc(v); const t = byId('tiers', v.tiersId) || {}; const l = byId('lots', v.lotId) || {};
+  return docShell('Relevé de compte acquéreur', `<h1>Relevé de compte acquéreur</h1><p class="mut">${esc(t.nom || '')} · Lot ${esc(l.ref || '')}, ${esc(citeName(l.citeId))}${l.surface ? ' · ' + nf.format(l.surface) + ' m²' : ''}${l.titre ? ' · Titre foncier ' + esc(l.titre) : ''}</p>
+  <table><tr><th>Échéance</th><th>Date</th><th class="n">Montant</th><th class="n">Réglé</th><th>État</th></tr>${c.sched.map(e => `<tr><td>${esc(e.label)}</td><td>${fmtDate(e.date)}</td><td class="n">${money(e.montant)}</td><td class="n">${money(e.paye)}</td><td>${e.etat}</td></tr>`).join('')}
+  <tr class="tot"><td colspan="2">Prix de vente</td><td class="n">${money(c.prix)}</td><td class="n">${money(c.paid)}</td><td></td></tr></table>
+  <p>Reste à payer : <strong>${money(c.reste)}</strong>${c.retard > .5 ? ` · dont <strong>${money(c.retard)}</strong> échu et non réglé à ce jour.` : '.'}</p>
+  <h3>Paiements reçus</h3><table><tr><th>Date</th><th>Mode</th><th>Référence</th><th class="n">Montant</th></tr>${(v.paiements || []).map(p => `<tr><td>${fmtDate(p.date)}</td><td>${esc(p.mode || '')}</td><td>${esc(p.ref || '')}</td><td class="n">${money(p.montant)}</td></tr>`).join('')}</table>`);
+}
+
+/* ---------- interactions ---------- */
+let toastT;
+function toast(m) { $('#toastRoot').innerHTML = `<div class="toast" role="status">${esc(m)}</div>`; clearTimeout(toastT); toastT = setTimeout(() => $('#toastRoot').innerHTML = '', 3200); }
+
+document.addEventListener('click', async ev => {
+  const el = ev.target.closest('[data-a]'); if (!el) return;
+  const a = el.dataset.a, id = el.dataset.id;
+  if (el.tagName === 'BUTTON' || el.closest('tr') || el.classList.contains('tk')) ev.stopPropagation();
+  switch (a) {
+    case 'go': go(el.dataset.v); break;
+    case 'new': openForm(el.dataset.c, el.dataset.pre ? JSON.parse(el.dataset.pre) : null); break;
+    case 'edit': { const r = byId(el.dataset.c, id); if (r) { if (READONLY) { toast('Votre accès est en lecture seule.'); return; } openForm(el.dataset.c, r); } break; }
+    case 'open': UI.drawer = {k: el.dataset.k, id}; renderDrawer(); break;
+    case 'closeDrawer': UI.drawer = null; renderDrawer(); break;
+    case 'closeModal': closeModal(); break;
+    case 'confirmYes': { const h = modalHandler; closeModal(); h && h(); break; }
+    case 'tab': UI.f[el.dataset.k] = el.dataset.v; render(); break;
+    case 'sell': { const l = byId('lots', id); openForm('ventes', {lotId: id, prix: l?.prix || ''}); break; }
+    case 'rent': { const l = byId('lots', id); openForm('baux', {lotId: id, loyer: l?.loyer || ''}); break; }
+    case 'del': { const col = el.dataset.c; const deps = col === 'cites' ? S.lots.some(l => l.citeId === id) : col === 'lots' ? (S.ventes.some(v => v.lotId === id) || S.baux.some(b => b.lotId === id)) : col === 'tiers' ? (S.ventes.some(v => v.tiersId === id) || S.baux.some(b => b.tiersId === id)) : false;
+      if (deps) { const e = $('#formErr'); if (e) { e.hidden = false; e.textContent = col === 'cites' ? 'Cette cité contient des lots : supprimez-les ou rattachez-les ailleurs d’abord.' : 'Cet enregistrement est lié à une vente ou un bail : supprimez d’abord ceux-ci.'; } return; }
+      const rec = byId(col, id);
+      confirmBox(`Supprimer définitivement ${SCHEMA[col].titre} ? Cette action est irréversible.`, 'Supprimer', async () => {
+        if (await remove(col, id)) {
+          if (col === 'ventes' && rec) await setLotStatut(rec.lotId, 'Disponible');
+          if (col === 'baux' && rec && byId('lots', rec.lotId)?.statut === 'Loué' && !S.baux.some(b => b.id !== id && b.lotId === rec.lotId && b.statut === 'Actif')) await setLotStatut(rec.lotId, 'Disponible');
+          if (UI.drawer && UI.drawer.id === id) UI.drawer = null; toast('Supprimé.'); schedule();
+        }
+      }); break; }
+    case 'payvente': { const v = byId('ventes', id); const c = venteCalc(v); openSub('ventes', id, 'paiements', PAY_FIELDS, 'Enregistrer un paiement', {date: TODAY, montant: c.next ? Math.round(c.next.montant - c.next.paye) : '', mode: 'Virement'}, it => num(it.montant) <= 0 ? 'Le montant doit être positif.' : null); break; }
+    case 'payrent': { const b = byId('baux', id); const c = bailCalc(b); const due = c.first ? c.mens - c.first.p : c.mens; openSub('baux', id, 'paiements', RENT_FIELDS, `Encaisser un loyer — ${tiersName(b.tiersId)}`, {mois: c.nextMonth, montant: due, date: TODAY, mode: 'Mobile money'}, it => num(it.montant) <= 0 ? 'Le montant doit être positif.' : null); break; }
+    case 'resa': case 'editresa': { const e = byId('espaces', id); const r = a === 'editresa' ? (e.reservations || []).find(x => x.id === el.dataset.p) : {date: TODAY, statut: 'Confirmée', debut: '10:00', fin: '14:00', montant: e.tarif || ''};
+      openSub('espaces', id, 'reservations', RESA_FIELDS, (a === 'resa' ? 'Nouvelle réservation — ' : 'Réservation — ') + e.nom, r, (it, fresh) => {
+        if (it.fin <= it.debut) return 'L’heure de fin doit suivre l’heure de début.';
+        if (it.statut === 'Annulée') return null;
+        const clash = (fresh.reservations || []).find(x => x.id !== it.id && x.statut !== 'Annulée' && x.date === it.date && x.debut < it.fin && it.debut < x.fin);
+        return clash ? `Créneau déjà réservé par ${clash.beneficiaire} (${clash.debut}–${clash.fin}).` : null; }); break; }
+    case 'delpay': case 'delsub': { const col = el.dataset.c, key = el.dataset.key || 'paiements', pid = el.dataset.p;
+      confirmBox(key === 'reservations' ? 'Supprimer cette réservation ?' : 'Retirer ce paiement ? Les soldes seront recalculés.', key === 'reservations' ? 'Supprimer' : 'Retirer', async () => { const r = byId(col, id); if (r && await save(col, {...r, [key]: (r[key] || []).filter(x => x.id !== pid)})) toast('Supprimé.'); }); break; }
+    case 'mv': { const cols = ['Signalée', 'Planifiée', 'En cours', 'Terminée']; const i = byId('interventions', id); const n = cols[Math.max(0, Math.min(3, cols.indexOf(i.statut || 'Signalée') + Number(el.dataset.d)))]; await save('interventions', {...i, statut: n}); break; }
+    case 'quittance': { const b = byId('baux', id); const p = (b.paiements || []).find(x => x.id === el.dataset.p); if (p) download(`Quittance ${lotName(b.lotId)} ${p.mois}.html`, quittance(b, p)); break; }
+    case 'releve': { const v = byId('ventes', id); download(`Releve ${lotName(v.lotId)} ${tiersName(v.tiersId)}.html`, releve(v)); break; }
+    case 'csv': { const k = el.dataset.k; download(`anayah-${k}-${TODAY}.csv`, csv(CSV[k]())); break; }
+    case 'backup': { const o = {exporte: new Date().toISOString(), config: CFG}; COLS.forEach(c => o[c] = S[c]); download(`anayah-gestim-sauvegarde-${TODAY}.json`, JSON.stringify(o, null, 2)); break; }
+    case 'purge': { const n = COLS.reduce((s, c) => s + S[c].filter(x => x.exemple).length, 0);
+      confirmBox(`Supprimer les ${n} enregistrements d’exemple ? Vos propres saisies sont conservées.`, 'Supprimer les exemples', async () => { for (const c of COLS) for (const x of S[c].filter(x => x.exemple)) { if (!await remove(c, x.id)) return; } toast('Exemples supprimés.'); }); break; }
+    case 'copy': { const v = el.dataset.v; try { await navigator.clipboard.writeText(v); toast('Copié.'); } catch (e) { toast(v); } break; }
+  }
+});
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape') { if ($('#modalRoot').innerHTML) closeModal(); else if (UI.drawer) { UI.drawer = null; renderDrawer(); } }
+  if (ev.key === 'Enter' && ev.target.classList && ev.target.classList.contains('tk')) ev.target.click();
+});
+document.addEventListener('submit', ev => {
+  ev.preventDefault();
+  if (ev.target.id === 'cfgForm') { const f = ev.target; saveCfg({societe: f.societe.value.trim(), devise: f.devise.value.trim() || 'FCFA', tel: f.tel.value.trim(), adresse: f.adresse.value.trim()}).then(() => toast('Paramètres enregistrés.')); return; }
+  if (modalHandler) modalHandler(ev.target);
+});
+let inT;
+document.addEventListener('input', ev => {
+  const el = ev.target; if (!el.dataset || !el.dataset.f) return;
+  if (el.dataset.f === 'tiersQ') UI.f.tiersQ = el.value; else { UI.f[el.dataset.f] = UI.f[el.dataset.f] || {}; UI.f[el.dataset.f][el.dataset.k] = el.value; }
+  if (el.tagName === 'SELECT') { render(); return; }
+  clearTimeout(inT); inT = setTimeout(() => { const pos = el.selectionStart; const id = el.id; render(); const n = document.getElementById(id); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} } }, 220);
+});
+
+/* ---------- démarrage ---------- */
+async function boot() {
+  render();
+  const use = n => (window.claude && typeof window.claude.use === 'function') ? window.claude.use(n).catch(() => null) : Promise.resolve(null);
+  use('downloads').then(d => { DL = d; });
+  DB = await use('db');
+  if (DB) {
+    MODE = 'cloud';
+    const u = await use('user');
+    if (u) { try { const w = await u.can('data.write'); if (w === false) READONLY = true; } catch (e) {} }
+    COLS.forEach(c => DB.collection(c).onSnapshot(snap => { S[c] = snap.docs.map(d => ({id: d.id, ...d.data()})); loaded.add(c); schedule(); }, e => { loaded.add(c); toast('Synchronisation interrompue. Rechargez la page.'); schedule(); }));
+    DB.doc('config/app').onSnapshot(s => { if (s.exists) CFG = {...CFG, ...s.data()}; schedule(); }, () => {});
+  } else { MODE = 'local'; localLoad(); COLS.forEach(c => loaded.add(c)); }
+  render();
+}
+boot();
+</script>
+</body>
+</html>
