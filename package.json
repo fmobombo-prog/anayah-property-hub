@@ -7,8 +7,5 @@
     "dev": "sh dev-server.sh",
     "build": "mkdir -p dist && cp index.html config.js dist/",
     "build:dev": "mkdir -p dist && cp index.html config.js dist/"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.117.3"
   }
 }
