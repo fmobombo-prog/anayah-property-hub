@@ -1254,7 +1254,7 @@ function upsellModal(msg) {
 }
 const UPSELL = {exports: 'Les exports CSV sont inclus dans les formules Pro et Entreprise.', quittances: 'Les quittances de loyer et relevés de compte sont inclus dans les formules Pro et Entreprise.'};
 
-const BRAND = `<div class="brand"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="18" y="1" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="1" y="18" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="18" y="18" width="15" height="15" rx="2" fill="#c9962f"/></svg><div><b>Anayah Gestim</b><small>Abonnement Ydila</small></div></div>`;
+const BRAND = `<div class="brand"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="18" y="1" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="1" y="18" width="15" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="18" y="18" width="15" height="15" rx="2" fill="#c9962f"/></svg><div><b>Anayah Gestim</b></div></div>`;
 function gateBody(kind, msg) {
   const f = (id, l, type, extra = '') => `<div class="fld"><label for="${id}">${l}</label><input id="${id}" name="${id.split('_')[1]}" type="${type}" required ${extra}></div>`;
   const m = `<div id="gateMsg" class="gmsg ${msg ? 'bad' : ''}" ${msg ? '' : 'hidden'}>${esc(msg || '')}</div>`;
