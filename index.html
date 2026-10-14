@@ -341,7 +341,7 @@ function sbError(e) {
   if (!e) return 'Erreur inconnue.';
   if (e.code === 'P0001') return e.message;
   if (e.code === '42501' || /row-level security/i.test(e.message || '')) {
-    if (ETAT && ETAT.statut === 'expire') return 'Votre abonnement Ydila a expiré : l’application est en lecture seule. Renouvelez-le dans « Abonnement Ydila ».';
+    if (ETAT && ETAT.statut === 'expire') return 'Votre abonnement a expiré : l’application est en lecture seule. Renouvelez-le dans « Abonnement ».';
     if (ETAT && ETAT.role === 'lecture') return 'Votre rôle dans l’agence permet seulement la consultation.';
     return 'Action non autorisée par votre formule ou votre rôle.';
   }
@@ -578,7 +578,7 @@ const VIEWS = [
   ['Vie des cités', [['espaces', 'Espaces communs'], ['syndic', 'Syndic & charges'], ['interventions', 'Maintenance']]],
   ['Contacts', [['tiers', 'Clients & tiers'], ['params', 'Paramètres']]],
 ];
-const VIEWS_COMPTE = ['Compte Ydila', [['abonnement', 'Abonnement Ydila'], ['equipe', 'Équipe'], ['console', 'Console Ydila']]];
+const VIEWS_COMPTE = ['Compte', [['abonnement', 'Abonnement'], ['equipe', 'Équipe'], ['console', 'Console Ydila']]];
 const VIEW_INFO = {}; [...VIEWS, VIEWS_COMPTE].forEach(([g, items]) => items.forEach(([k, t]) => VIEW_INFO[k] = {g, t}));
 if (!VIEW_INFO[UI.view]) UI.view = 'dashboard';
 const ACCOUNT_VIEWS = ['abonnement', 'equipe', 'console'];
@@ -1233,7 +1233,7 @@ function openAide() {
     <li><b>Importer une sauvegarde</b> : reprend un fichier JSON, par exemple pour passer du mode local au stockage en ligne.</li>
   </ul>
 
-  <h3>Abonnement Ydila</h3>
+  <h3>Abonnement</h3>
   <ul>
     <li>Chaque agence démarre par <b>30 jours d’essai gratuit</b> avec toutes les fonctions Pro.</li>
     <li>Trois formules : <b>Essentiel</b>, <b>Pro</b> et <b>Entreprise</b>. Elles diffèrent par le nombre de cités, de lots et d’utilisateurs, et par les fonctions incluses (exports, quittances, module Syndic). Le paiement annuel offre 2 mois.</li>
