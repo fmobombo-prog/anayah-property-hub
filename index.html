@@ -1451,6 +1451,44 @@ function openYParams() {
       closeModal(); toast('Paramètres enregistrés.'); refreshConsole(); refreshEtat();
     });
 }
+function exempleData() {
+  const m = TODAY.slice(0, 7), m1 = addMonths(TODAY, -1).slice(0, 7), m2 = addMonths(TODAY, -2).slice(0, 7);
+  const cites = [
+    {id: 'ex-cite-1', nom: 'Cité Les Manguiers', ville: 'Kinshasa', quartier: 'Ngaliema', superficie: 12, statut: 'Commercialisation', promoteur: 'Groupe Horizon', cotisation: 25000, notes: 'Programme phare de l’agence.', exemple: true},
+    {id: 'ex-cite-2', nom: 'Résidence Le Baobab', ville: 'Kinshasa', quartier: 'Gombe', superficie: 3, statut: 'Livrée', promoteur: 'Groupe Horizon', cotisation: 40000, notes: '', exemple: true}];
+  const lots = [
+    {id: 'ex-lot-1', ref: 'MAN-A01', citeId: 'ex-cite-1', ilot: 'Îlot A', type: 'Villa', surface: 320, titre: 'TF 4521/KN', prix: 185000000, loyer: 1500000, statut: 'Vendu', notes: '', exemple: true},
+    {id: 'ex-lot-2', ref: 'MAN-A02', citeId: 'ex-cite-1', ilot: 'Îlot A', type: 'Villa', surface: 300, titre: 'TF 4522/KN', prix: 175000000, loyer: 1400000, statut: 'Disponible', notes: '', exemple: true},
+    {id: 'ex-lot-3', ref: 'MAN-B04', citeId: 'ex-cite-1', ilot: 'Îlot B', type: 'Appartement', surface: 110, titre: 'TF 4580/KN', prix: 65000000, loyer: 600000, statut: 'Loué', notes: '', exemple: true},
+    {id: 'ex-lot-4', ref: 'BAO-T12', citeId: 'ex-cite-2', ilot: 'Tour 1', type: 'Appartement', surface: 95, titre: 'TF 2210/KN', prix: 55000000, loyer: 550000, statut: 'Loué', notes: '', exemple: true},
+    {id: 'ex-lot-5', ref: 'BAO-C01', citeId: 'ex-cite-2', ilot: 'Rez-de-chaussée', type: 'Commerce', surface: 60, titre: 'TF 2215/KN', prix: 80000000, loyer: 900000, statut: 'Disponible', notes: '', exemple: true}];
+  const tiers = [
+    {id: 'ex-tiers-1', nom: 'Jean-Pierre Ilunga', categorie: 'Acquéreur', tel: '+243 810 000 001', email: 'jp.ilunga@example.com', piece: 'CNI 123456', adresse: 'Kinshasa, Gombe', notes: '', exemple: true},
+    {id: 'ex-tiers-2', nom: 'Amina Kasongo', categorie: 'Locataire', tel: '+243 820 000 002', email: 'a.kasongo@example.com', piece: '', adresse: 'Kinshasa, Ngaliema', notes: '', exemple: true},
+    {id: 'ex-tiers-3', nom: 'SARL Kivu Négoce', categorie: 'Locataire', tel: '+243 830 000 003', email: 'contact@kivunegoce.example.com', piece: 'RCCM CD/KIN/7890', adresse: 'Kinshasa, Gombe', notes: '', exemple: true}];
+  const ventes = [
+    {id: 'ex-vente-1', lotId: 'ex-lot-1', tiersId: 'ex-tiers-1', date: addMonths(TODAY, -2), prix: 185000000, mode: 'Échelonné', acompte: 50000000, nbEcheances: 12, premiere: addMonths(TODAY, -1), notaire: 'Me Kabongo — Acte 2025-114', notes: '', exemple: true,
+      paiements: [{id: 'ex-pv-1', date: addMonths(TODAY, -2), montant: 50000000, mode: 'Acompte', ref: ''}, {id: 'ex-pv-2', date: addMonths(TODAY, -1), montant: 11250000, mode: 'Virement', ref: 'TRF-0091'}]}];
+  const baux = [
+    {id: 'ex-bail-1', lotId: 'ex-lot-3', tiersId: 'ex-tiers-2', debut: addMonths(TODAY, -3), duree: 12, loyer: 600000, charges: 50000, caution: 1200000, statut: 'Actif', notes: '', exemple: true,
+      paiements: [{id: 'ex-pb-1', mois: m2, montant: 600000, date: addMonths(TODAY, -2), mode: 'Mobile money'}, {id: 'ex-pb-2', mois: m1, montant: 600000, date: addMonths(TODAY, -1), mode: 'Mobile money'}]},
+    {id: 'ex-bail-2', lotId: 'ex-lot-4', tiersId: 'ex-tiers-3', debut: addMonths(TODAY, -1), duree: 24, loyer: 550000, charges: 40000, caution: 1100000, statut: 'Actif', notes: '', exemple: true,
+      paiements: [{id: 'ex-pb-3', mois: m1, montant: 550000, date: addMonths(TODAY, -1), mode: 'Virement'}]}];
+  const espaces = [
+    {id: 'ex-espace-1', nom: 'Salle polyvalente', citeId: 'ex-cite-1', type: 'Salle polyvalente', capacite: 120, tarif: 150000, horaires: '08:00 – 23:00', statut: 'Ouvert', notes: 'Réservation auprès du gardien.', exemple: true,
+      reservations: [{id: 'ex-res-1', date: TODAY, statut: 'Confirmée', debut: '14:00', fin: '20:00', montant: 150000, beneficiaire: 'Famille Mbuyi', motif: 'Anniversaire'}]},
+    {id: 'ex-espace-2', nom: 'Terrain de basket', citeId: 'ex-cite-1', type: 'Terrain de sport', capacite: 30, tarif: 0, horaires: '07:00 – 20:00', statut: 'Ouvert', notes: '', exemple: true, reservations: []}];
+  const charges = [
+    {id: 'ex-charge-1', libelle: 'Gardiennage octobre', citeId: 'ex-cite-1', categorie: 'Gardiennage & sécurité', montant: 450000, date: TODAY, fournisseur: 'Sécuritas RDC', statut: 'Payée', exemple: true},
+    {id: 'ex-charge-2', libelle: 'Entretien espaces verts', citeId: 'ex-cite-1', categorie: 'Entretien espaces verts', montant: 180000, date: TODAY, fournisseur: 'Jardins & Co', statut: 'À payer', exemple: true}];
+  const cotisations = [
+    {id: 'ex-cot-1', citeId: 'ex-cite-1', lotId: 'ex-lot-1', mois: m, montant: 25000, date: TODAY, mode: 'Mobile money', exemple: true},
+    {id: 'ex-cot-2', citeId: 'ex-cite-1', lotId: 'ex-lot-3', mois: m, montant: 25000, date: TODAY, mode: 'Espèces', exemple: true}];
+  const interventions = [
+    {id: 'ex-int-1', titre: 'Fuite d’eau — villa MAN-A02', citeId: 'ex-cite-1', lieu: 'Lot MAN-A02', categorie: 'Plomberie', priorite: 'Haute', statut: 'En cours', notes: '', exemple: true},
+    {id: 'ex-int-2', titre: 'Éclairage public îlot B', citeId: 'ex-cite-1', lieu: 'Îlot B', categorie: 'Électricité', priorite: 'Normale', statut: 'Planifiée', notes: '', exemple: true}];
+  return {cites, lots, tiers, ventes, baux, espaces, charges, cotisations, interventions};
+}
 async function importData(o) {
   let n = 0;
   for (const c of COLS) {
