@@ -871,7 +871,7 @@ function vParams() {
       <div class="list">
         <div class="li"><div class="t"><b>Sauvegarde complète</b><span>Toutes les cités, lots, ventes, baux et charges au format JSON.</span></div><button class="btn sm" data-a="backup">Télécharger</button></div>
         ${READONLY ? '' : `<div class="li"><div class="t"><b>Importer une sauvegarde</b><span>Reprend un fichier JSON téléchargé ici, par exemple pour passer du mode local au stockage en ligne.</span></div><button class="btn sm" data-a="importPick">Importer</button></div>`}
-        <div class="li"><div class="t"><b>Données d’exemple</b><span>${nEx ? nEx + ' enregistrement(s) marqués « exemple » pour découvrir l’application.' : 'Aucune donnée d’exemple.'}</span></div>${nEx && !READONLY ? '<button class="btn sm danger" data-a="purge">Supprimer les exemples</button>' : ''}</div>
+        <div class="li"><div class="t"><b>Données d’exemple</b><span>${nEx ? nEx + ' enregistrement(s) marqués « exemple » pour découvrir l’application.' : 'Aucune donnée d’exemple. Chargez une agence fictive complète (cités, lots, ventes, locations, syndic…) pour vous entraîner.'}</span></div>${READONLY ? '' : (nEx ? '<button class="btn sm danger" data-a="purge">Supprimer les exemples</button>' : '<button class="btn sm primary" data-a="seedEx">Charger l’agence exemple</button>')}</div>
         <div class="li"><div class="t"><b>Stockage</b><span>${stock}</span></div></div>
         ${MODE === 'supabase' ? `<div class="li"><div class="t"><b>Compte</b><span style="overflow-wrap:anywhere">${esc(SESSION?.user?.email || '')} · ${esc(ROLES[ETAT?.role] || '')}</span></div><button class="btn sm" data-a="logout">Se déconnecter</button></div>` : ''}
       </div>
