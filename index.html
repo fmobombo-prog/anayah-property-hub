@@ -600,10 +600,10 @@ function bannerHtml() {
   if (MODE === 'supabase' && ETAT) {
     const fin = ETAT.fin_droits, j = daysBetween(TODAY, fin), renew = isAdmin() ? `<button class="link" data-a="go" data-v="abonnement">${ETAT.statut === 'essai' ? 'Choisir une formule' : 'Renouveler'}</button>` : '';
     if (ETAT.statut === 'essai') return `<div class="banner info">Essai gratuit : ${j} jour(s) restant(s), avec toutes les fonctions de la formule Pro.${renew}</div>`;
-    if (ETAT.statut === 'grace') return `<div class="banner">Votre abonnement Ydila a pris fin le ${fmtDate(fin)}. Il reste ${j + ETAT.jours_grace} jour(s) avant le passage en lecture seule.${renew}</div>`;
-    if (ETAT.statut === 'expire') return `<div class="banner bad">Abonnement Ydila expiré : l’application est en lecture seule depuis le ${fmtDate(addDays(fin, ETAT.jours_grace + 1))}. Vos données sont conservées et restent consultables et exportables.${renew}</div>`;
+    if (ETAT.statut === 'grace') return `<div class="banner">Votre abonnement a pris fin le ${fmtDate(fin)}. Il reste ${j + ETAT.jours_grace} jour(s) avant le passage en lecture seule.${renew}</div>`;
+    if (ETAT.statut === 'expire') return `<div class="banner bad">Abonnement expiré : l’application est en lecture seule depuis le ${fmtDate(addDays(fin, ETAT.jours_grace + 1))}. Vos données sont conservées et restent consultables et exportables.${renew}</div>`;
     if (ETAT.role === 'lecture') return `<div class="banner info">Votre rôle dans l’agence permet la consultation uniquement.</div>`;
-    if (ETAT.statut === 'actif' && j <= 7) return `<div class="banner info">Votre abonnement Ydila se termine le ${fmtDate(fin)}.${renew}</div>`;
+    if (ETAT.statut === 'actif' && j <= 7) return `<div class="banner info">Votre abonnement se termine le ${fmtDate(fin)}.${renew}</div>`;
     return '';
   }
   if (READONLY) return `<div class="banner">Vous consultez Anayah Gestim en lecture seule. Demandez un accès Contributeur au propriétaire pour saisir des données.</div>`;
@@ -636,7 +636,7 @@ const loading = () => MODE === 'init' || ((MODE === 'cloud' || MODE === 'supabas
 function emptyState(title, text, action) { return `<div class="panel"><div class="empty"><b>${title}</b><span>${text}</span>${action || ''}</div></div>`; }
 const addBtn = (col, extra = '') => READONLY ? '' : `<button class="btn primary" data-a="new" data-c="${col}" ${extra}>+ ${SCHEMA[col].nouveau}</button>`;
 const csvBtn = key => `<button class="btn" data-a="${hasF('exports') ? 'csv' : 'upsell'}" data-f="exports" data-k="${key}">Exporter CSV</button>`;
-function upsellPanel(title, text) { return `<div class="panel"><div class="empty upsell" style="align-items:center"><b>${title}</b><span>${text}</span>${isAdmin() ? '<button class="btn primary" data-a="go" data-v="abonnement">Voir les formules Ydila</button>' : '<span>Demandez à l’administrateur de votre agence de changer de formule.</span>'}</div></div>`; }
+function upsellPanel(title, text) { return `<div class="panel"><div class="empty upsell" style="align-items:center"><b>${title}</b><span>${text}</span>${isAdmin() ? '<button class="btn primary" data-a="go" data-v="abonnement">Voir les formules</button>' : '<span>Demandez à l’administrateur de votre agence de changer de formule.</span>'}</div></div>`; }
 
 /* --- Tableau de bord --- */
 function vDashboard() {
@@ -904,7 +904,7 @@ function vAbonnement() {
   return {actions: isAdmin() ? `<button class="btn primary" data-a="choosePlan" data-code="${esc(p.code)}">Déclarer un paiement</button>` : '', html: `<div class="grid" style="gap:16px">
     <section class="panel"><div class="ph"><h2>Formule ${esc(p.nom)} <span class="chip s-${st[1]}" style="vertical-align:middle;margin-left:6px">${st[0]}</span></h2><p>${echeance}</p></div>
       <div class="meters">${meter('Cités', u.cites, p.max_cites)}${meter('Lots', u.lots, p.max_lots)}${meter('Utilisateurs', u.utilisateurs, p.max_utilisateurs)}</div>
-      ${attente.length ? `<p style="margin:14px 0 0;font-size:13.5px"><span class="chip s-warn">En attente</span> ${attente.length} paiement(s) déclaré(s) en cours de vérification par l’équipe Ydila.</p>` : ''}
+      ${attente.length ? `<p style="margin:14px 0 0;font-size:13.5px"><span class="chip s-warn">En attente</span> ${attente.length} paiement(s) déclaré(s) en cours de vérification par l’administrateur.</p>` : ''}
     </section>
     <div class="grid g-plans">${plans || '<div class="panel"><div class="empty">Chargement des formules…</div></div>'}</div>
     <section class="panel"><div class="ph"><h2>Historique des paiements</h2><p>${ABO.paiements.length} paiement(s)</p></div>
@@ -942,7 +942,7 @@ function vConsole() {
   const rev = CONSOLE.paiements.filter(p => p.statut === 'valide' && (p.traite_le || '').slice(0, 7) === THIS_MONTH).reduce((s, p) => s + num(p.montant), 0);
   const dv = esc(CONSOLE.params.devise || 'FCFA');
   const prix = p => { const pl = CONSOLE.plans.find(x => x.code === p.plan_code); return pl ? (p.cycle === 'annuel' ? pl.prix_mensuel * (12 - pl.mois_offerts_annuel) : pl.prix_mensuel) : null; };
-  return {actions: `<button class="btn" data-a="consoleRefresh">Actualiser</button><button class="btn" data-a="editYParams">Paramètres Ydila</button>`, html: `<div class="grid" style="gap:16px">
+  return {actions: `<button class="btn" data-a="consoleRefresh">Actualiser</button><button class="btn" data-a="editYParams">Paramètres</button>`, html: `<div class="grid" style="gap:16px">
     <div class="grid g-kpi">
       <div class="kpi hl"><span class="l">Encaissé en ${esc(fmtMonth(THIS_MONTH))}</span><span class="v">${nf.format(rev)} ${dv}</span><span class="s">Paiements validés ce mois</span></div>
       <div class="kpi"><span class="l">Agences</span><span class="v">${ags.length}</span><span class="s">${cnt('actif')} active(s) · ${cnt('essai')} en essai</span></div>
@@ -1237,7 +1237,7 @@ function openAide() {
   <ul>
     <li>Chaque agence démarre par <b>30 jours d’essai gratuit</b> avec toutes les fonctions Pro.</li>
     <li>Trois formules : <b>Essentiel</b>, <b>Pro</b> et <b>Entreprise</b>. Elles diffèrent par le nombre de cités, de lots et d’utilisateurs, et par les fonctions incluses (exports, quittances, module Syndic). Le paiement annuel offre 2 mois.</li>
-    <li>Pour payer : réglez par Mobile money ou virement selon les instructions affichées, puis cliquez sur <b>Déclarer un paiement</b> et indiquez la référence de la transaction. L’abonnement est prolongé dès que l’équipe Ydila a validé le paiement.</li>
+    <li>Pour payer : réglez par Mobile money ou virement selon les instructions affichées, puis cliquez sur <b>Déclarer un paiement</b> et indiquez la référence de la transaction. L’abonnement est prolongé dès que l’administrateur a validé le paiement.</li>
     <li>À l’échéance, vous disposez de <b>7 jours de grâce</b>. Ensuite l’application passe en <b>lecture seule</b> : vos données restent consultables et exportables, rien n’est supprimé.</li>
   </ul>
 
@@ -1257,7 +1257,7 @@ function openAide() {
 
 /* ---------- Ydila : session, agences, abonnement ---------- */
 function upsellModal(msg) {
-  modal(`<h2>Fonction non incluse</h2><p style="margin:0">${esc(msg)}</p><div class="formbar"><span class="sp"></span><button class="btn ghost" data-a="closeModal">Fermer</button>${isAdmin() && MODE === 'supabase' ? '<button class="btn primary" data-a="goAbo">Voir les formules Ydila</button>' : ''}</div>`);
+  modal(`<h2>Fonction non incluse</h2><p style="margin:0">${esc(msg)}</p><div class="formbar"><span class="sp"></span><button class="btn ghost" data-a="closeModal">Fermer</button>${isAdmin() && MODE === 'supabase' ? '<button class="btn primary" data-a="goAbo">Voir les formules</button>' : ''}</div>`);
 }
 const UPSELL = {exports: 'Les exports CSV sont inclus dans les formules Pro et Entreprise.', quittances: 'Les quittances de loyer et relevés de compte sont inclus dans les formules Pro et Entreprise.'};
 
@@ -1399,7 +1399,7 @@ async function rpc(name, args, okMsg) {
 function openDeclare(code) {
   if (!ABO.plans.length) { toast('Chargement des formules…'); refreshAbo(); return; }
   const prixDe = (pl, cyc) => cyc === 'annuel' ? pl.prix_mensuel * (12 - pl.mois_offerts_annuel) : pl.prix_mensuel;
-  modal(`<form id="declForm" class="form" novalidate><h2>Déclarer un paiement Ydila</h2>
+  modal(`<form id="declForm" class="form" novalidate><h2>Déclarer un paiement</h2>
     <div class="instr">${esc(ETAT?.instructions || '')}</div>
     <div class="grid2">
       <div class="fld half"><label for="d_plan">Formule</label><select id="d_plan" name="plan">${ABO.plans.map(pl => `<option value="${esc(pl.code)}" ${pl.code === code ? 'selected' : ''}>${esc(pl.nom)}</option>`).join('')}</select></div>
@@ -1411,12 +1411,12 @@ function openDeclare(code) {
     <div class="formbar"><span class="sp"></span><button type="button" class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary">Envoyer la déclaration</button></div></form>`,
     async form => {
       const pl = ABO.plans.find(x => x.code === form.plan.value), cyc = form.cycle.value, ref = form.ref.value.trim(), err = $('#formErr');
-      if (!ref) { err.hidden = false; err.textContent = 'Indiquez la référence de la transaction pour que l’équipe Ydila puisse la vérifier.'; return; }
+      if (!ref) { err.hidden = false; err.textContent = 'Indiquez la référence de la transaction pour que l’administrateur puisse la vérifier.'; return; }
       if (pl.max_cites != null && ETAT.usage.cites > pl.max_cites || pl.max_lots != null && ETAT.usage.lots > pl.max_lots) { err.hidden = false; err.textContent = `Votre agence dépasse les limites de la formule ${pl.nom} (${ETAT.usage.cites} cité(s), ${ETAT.usage.lots} lots). Vos données seront conservées mais vous ne pourrez plus en ajouter. Choisissez une formule supérieure ou confirmez en cliquant à nouveau.`; if (!form.dataset.confirmed) { form.dataset.confirmed = '1'; return; } }
       form.querySelector('button.primary').disabled = true;
       const {error} = await SB.from('paiements_abonnement').insert({agence_id: AGENCE.id, plan_code: pl.code, cycle: cyc, montant: prixDe(pl, cyc), mode: form.mode.value, reference: ref, declare_par: SESSION.user.id});
       if (error) { err.hidden = false; err.textContent = sbError(error); form.querySelector('button.primary').disabled = false; return; }
-      closeModal(); toast('Paiement déclaré. Votre abonnement sera prolongé dès sa validation par l’équipe Ydila.'); refreshAbo();
+      closeModal(); toast('Paiement déclaré. Votre abonnement sera prolongé dès sa validation par l’administrateur.'); refreshAbo();
     });
   const upd = () => { const pl = ABO.plans.find(x => x.code === $('#d_plan').value), cyc = $('#d_cycle').value; $('#d_montant').textContent = nf.format(prixDe(pl, cyc)) + ' ' + ((ETAT && ETAT.devise_ydila) || 'FCFA'); $('#d_hint').textContent = cyc === 'annuel' && pl.mois_offerts_annuel ? `${pl.mois_offerts_annuel} mois offerts par rapport au paiement mensuel` : ''; };
   $('#d_plan').addEventListener('change', upd); $('#d_cycle').addEventListener('change', upd); upd();
@@ -1445,7 +1445,7 @@ function openPlanEdit(code) {
 }
 function openYParams() {
   const p = CONSOLE.params;
-  modal(`<form id="yparamsForm" class="form" novalidate><h2>Paramètres Ydila</h2><div class="grid2">
+  modal(`<form id="yparamsForm" class="form" novalidate><h2>Paramètres</h2><div class="grid2">
     <div class="fld half"><label for="y_devise">Devise des abonnements</label><input id="y_devise" name="devise" value="${esc(p.devise || 'FCFA')}"></div>
     <div class="fld half"><label for="y_essai">Jours d’essai gratuit</label><input id="y_essai" name="essai" type="number" min="0" value="${num(p.jours_essai)}"></div>
     <div class="fld half"><label for="y_grace">Jours de grâce après échéance</label><input id="y_grace" name="grace" type="number" min="0" value="${num(p.jours_grace)}"></div>
