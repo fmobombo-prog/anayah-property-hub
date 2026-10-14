@@ -226,7 +226,7 @@ export type Database = {
           },
         ]
       }
-      parametres: {
+      parametres_ydila: {
         Row: {
           devise: string
           id: number
