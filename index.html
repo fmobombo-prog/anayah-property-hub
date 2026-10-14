@@ -1461,7 +1461,7 @@ function exempleData() {
     {id: 'ex-lot-2', ref: 'MAN-A02', citeId: 'ex-cite-1', ilot: 'Îlot A', type: 'Villa', surface: 300, titre: 'TF 4522/KN', prix: 175000000, loyer: 1400000, statut: 'Disponible', notes: '', exemple: true},
     {id: 'ex-lot-3', ref: 'MAN-B04', citeId: 'ex-cite-1', ilot: 'Îlot B', type: 'Appartement', surface: 110, titre: 'TF 4580/KN', prix: 65000000, loyer: 600000, statut: 'Loué', notes: '', exemple: true},
     {id: 'ex-lot-4', ref: 'BAO-T12', citeId: 'ex-cite-2', ilot: 'Tour 1', type: 'Appartement', surface: 95, titre: 'TF 2210/KN', prix: 55000000, loyer: 550000, statut: 'Loué', notes: '', exemple: true},
-    {id: 'ex-lot-5', ref: 'BAO-C01', citeId: 'ex-cite-2', ilot: 'Rez-de-chaussée', type: 'Commerce', surface: 60, titre: 'TF 2215/KN', prix: 80000000, loyer: 900000, statut: 'Disponible', notes: '', exemple: true}];
+    {id: 'ex-lot-5', ref: 'BAO-C01', citeId: 'ex-cite-2', ilot: 'Rez-de-chaussée', type: 'Local commercial', surface: 60, titre: 'TF 2215/KN', prix: 80000000, loyer: 900000, statut: 'Disponible', notes: '', exemple: true}];
   const tiers = [
     {id: 'ex-tiers-1', nom: 'Jean-Pierre Ilunga', categorie: 'Acquéreur', tel: '+243 810 000 001', email: 'jp.ilunga@example.com', piece: 'CNI 123456', adresse: 'Kinshasa, Gombe', notes: '', exemple: true},
     {id: 'ex-tiers-2', nom: 'Amina Kasongo', categorie: 'Locataire', tel: '+243 820 000 002', email: 'a.kasongo@example.com', piece: '', adresse: 'Kinshasa, Ngaliema', notes: '', exemple: true},
@@ -1476,7 +1476,7 @@ function exempleData() {
       paiements: [{id: 'ex-pb-3', mois: m1, montant: 550000, date: addMonths(TODAY, -1), mode: 'Virement'}]}];
   const espaces = [
     {id: 'ex-espace-1', nom: 'Salle polyvalente', citeId: 'ex-cite-1', type: 'Salle polyvalente', capacite: 120, tarif: 150000, horaires: '08:00 – 23:00', statut: 'Ouvert', notes: 'Réservation auprès du gardien.', exemple: true,
-      reservations: [{id: 'ex-res-1', date: TODAY, statut: 'Confirmée', debut: '14:00', fin: '20:00', montant: 150000, beneficiaire: 'Famille Mbuyi', motif: 'Anniversaire'}]},
+      reservations: [{id: 'ex-res-1', date: TODAY, statut: 'Confirmée', debut: '14:00', fin: '20:00', montant: 150000, beneficiaire: 'Famille Mbuyi', objet: 'Anniversaire'}]},
     {id: 'ex-espace-2', nom: 'Terrain de basket', citeId: 'ex-cite-1', type: 'Terrain de sport', capacite: 30, tarif: 0, horaires: '07:00 – 20:00', statut: 'Ouvert', notes: '', exemple: true, reservations: []}];
   const charges = [
     {id: 'ex-charge-1', libelle: 'Gardiennage octobre', citeId: 'ex-cite-1', categorie: 'Gardiennage & sécurité', montant: 450000, date: TODAY, fournisseur: 'Sécuritas RDC', statut: 'Payée', exemple: true},
@@ -1552,6 +1552,7 @@ document.addEventListener('click', async ev => {
     case 'releve': { const v = byId('ventes', id); download(`Releve ${lotName(v.lotId)} ${tiersName(v.tiersId)}.html`, releve(v)); break; }
     case 'csv': { const k = el.dataset.k; download(`anayah-${k}-${TODAY}.csv`, csv(CSV[k]())); break; }
     case 'backup': { const o = {exporte: new Date().toISOString(), config: CFG}; COLS.forEach(c => o[c] = S[c]); download(`anayah-gestim-sauvegarde-${TODAY}.json`, JSON.stringify(o, null, 2)); break; }
+    case 'seedEx': { confirmBox('Charger l’agence exemple ? Une cité fictive complète (lots, ventes, locations, syndic, maintenance) sera ajoutée à vos données. Vous pourrez la supprimer en un clic depuis Paramètres.', 'Charger les exemples', async () => { await importData(exempleData()); }); break; }
     case 'purge': { const n = COLS.reduce((s, c) => s + S[c].filter(x => x.exemple).length, 0);
       confirmBox(`Supprimer les ${n} enregistrements d’exemple ? Vos propres saisies sont conservées.`, 'Supprimer les exemples', async () => { for (const c of COLS) for (const x of S[c].filter(x => x.exemple)) { if (!await remove(c, x.id)) return; } toast('Exemples supprimés.'); }); break; }
     case 'upsell': upsellModal(UPSELL[el.dataset.f] || 'Cette fonction n’est pas incluse dans votre formule.'); break;
