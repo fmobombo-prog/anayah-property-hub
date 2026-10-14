@@ -183,7 +183,16 @@ td .sub{display:block;color:var(--muted);font-size:12px}
 .x:hover{background:var(--sunk)}
 .modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:16px}
 .mbox{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:min(640px,100%);max-height:calc(100% - 32px);overflow-y:auto;padding:22px;box-shadow:var(--shadow);position:relative;z-index:1}
+.mbox.wide{width:min(760px,100%)}
 .mbox h2{font-size:20px;margin-bottom:14px}
+.helpbtn{all:unset;cursor:pointer;width:34px;height:34px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--line);background:var(--sunk);color:var(--muted);font-size:16px;font-weight:700;flex:none}
+.helpbtn:hover{color:var(--ink);border-color:var(--brass)}
+.helpbtn:focus-visible{outline:2px solid var(--brass)}
+.man h3{font-size:14.5px;margin:18px 0 6px;color:var(--ink)}
+.man h3:first-of-type{margin-top:6px}
+.man p,.man li{font-size:13.5px;line-height:1.55;color:var(--muted)}
+.man ul{margin:4px 0 0;padding-left:18px}
+.man b{color:var(--ink)}
 .form .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
 .fld{display:flex;flex-direction:column;gap:5px;grid-column:1/-1;min-width:0}
 .fld.half{grid-column:auto}
@@ -231,6 +240,7 @@ td .sub{display:block;color:var(--muted);font-size:12px}
     <header class="top">
       <div><p class="eyebrow" id="eyebrow"></p><h1 id="title">Anayah Gestim</h1></div>
       <div class="actions" id="actions"></div>
+      <button class="helpbtn" data-a="aide" aria-label="Aide — ouvrir le manuel de l’utilisateur" title="Aide">?</button>
     </header>
     <div id="banner"></div>
     <div id="view"></div>
