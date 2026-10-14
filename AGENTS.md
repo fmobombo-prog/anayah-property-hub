@@ -1,0 +1,1 @@
+- Invoices live in the relational `factures` table, written only via SECURITY DEFINER RPCs (emettre_facture, emettre_avoir, sfec_certifier): keeps numbering gap-free and emitted invoices immutable, as SFEC/DGID requires.
