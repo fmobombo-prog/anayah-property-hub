@@ -434,6 +434,10 @@ const SCHEMA = {
     {k: 'tel', l: 'Téléphone', half: 1, t: 'tel'},
     {k: 'email', l: 'E-mail', half: 1, t: 'email'},
     {k: 'piece', l: 'Pièce d’identité / RCCM', half: 1},
+    {k: 'typeDest', l: 'Type de client (facturation)', t: 'select', o: ['Particulier', 'Entreprise', 'Administration', 'Étranger'], half: 1},
+    {k: 'niu', l: 'NIU (numéro fiscal)', half: 1, hint: '16 ou 17 caractères — obligatoire pour une entreprise'},
+    {k: 'rccm', l: 'RCCM', half: 1},
+    {k: 'assujetti', l: 'Assujetti à la TVA', t: 'select', o: ['Non', 'Oui'], half: 1},
     {k: 'adresse', l: 'Adresse'},
     {k: 'notes', l: 'Notes', t: 'textarea'}]},
   ventes: {nouveau: 'Nouvelle vente', titre: 'la vente', fields: [
@@ -569,12 +573,13 @@ const ICON = {
   params: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
   abonnement: '<path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',
   equipe: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6"/>',
+  factures: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h5"/>',
   console: '<path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
 };
 const VIEWS = [
   ['Pilotage', [['dashboard', 'Tableau de bord']]],
   ['Patrimoine', [['cites', 'Cités & programmes'], ['lots', 'Lots & terrains']]],
-  ['Commercial', [['ventes', 'Ventes de terrains'], ['baux', 'Locations']]],
+  ['Commercial', [['ventes', 'Ventes de terrains'], ['baux', 'Locations'], ['factures', 'Factures & SFEC']]],
   ['Vie des cités', [['espaces', 'Espaces communs'], ['syndic', 'Syndic & charges'], ['interventions', 'Maintenance']]],
   ['Contacts', [['tiers', 'Clients & tiers'], ['params', 'Paramètres']]],
 ];
@@ -592,7 +597,7 @@ let pending = false;
 function schedule() { if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; render(); }); } }
 function go(v) {
   UI.view = v; UI.drawer = null; try { localStorage.setItem('anayah-view', v); } catch (e) {} try { history.replaceState(null, '', '#' + v); } catch (e) {}
-  if (MODE === 'supabase') { if (v === 'abonnement') refreshAbo(); if (v === 'equipe') refreshEquipe(); if (v === 'console' && SUPER) refreshConsole(); }
+  if (MODE === 'supabase') { if (v === 'abonnement') refreshAbo(); if (v === 'equipe') refreshEquipe(); if (v === 'console' && SUPER) refreshConsole(); if (v === 'factures') refreshFactures(); }
   render(); window.scrollTo(0, 0);
 }
 function bannerHtml() {
@@ -826,7 +831,7 @@ function vSyndic() {
     </tbody></table></div></section>
     <div class="tabs">${['Dépenses', 'Cotisations'].map(t => `<button data-a="tab" data-k="syndicTab" data-v="${t}" aria-pressed="${tab === t}">${t === 'Dépenses' ? 'Dépenses communes' : 'Cotisations encaissées'}</button>`).join('')}</div>
     ${tab === 'Dépenses' ? (deps.length ? `<div class="tbl"><table><thead><tr><th>Date</th><th>Libellé</th><th>Cité</th><th>Catégorie</th><th>Fournisseur</th><th class="n">Montant</th><th>Règlement</th></tr></thead><tbody>${deps.map(d => `<tr class="click" data-a="edit" data-c="charges" data-id="${d.id}"><td>${fmtDate(d.date)}</td><td><b>${esc(d.libelle)}</b>${exTag(d)}</td><td>${esc(citeName(d.citeId))}</td><td>${esc(d.categorie || '')}</td><td>${esc(d.fournisseur || '')}</td><td class="n">${money(d.montant)}</td><td>${chip(d.statut)}</td></tr>`).join('')}</tbody></table></div>` : emptyState('Aucune dépense commune', 'Gardiennage, électricité des voies, entretien des espaces verts… saisissez ici les charges de chaque cité.', addBtn('charges')))
-    : (cots.length ? `<div class="tbl"><table><thead><tr><th>Encaissée le</th><th>Mois</th><th>Lot</th><th>Cité</th><th>Mode</th><th class="n">Montant</th></tr></thead><tbody>${cots.map(d => `<tr class="click" data-a="edit" data-c="cotisations" data-id="${d.id}"><td>${fmtDate(d.date)}</td><td>${fmtMonth(d.mois)}</td><td class="mono">${esc(lotName(d.lotId))}${exTag(d)}</td><td>${esc(citeName(d.citeId))}</td><td>${esc(d.mode || '')}</td><td class="n">${money(d.montant)}</td></tr>`).join('')}</tbody></table></div>` : emptyState('Aucune cotisation encaissée', 'Enregistrez les cotisations versées par les propriétaires pour suivre le recouvrement du syndic.', READONLY ? '' : `<button class="btn primary" data-a="new" data-c="cotisations">+ Encaisser une cotisation</button>`))}
+    : (cots.length ? `<div class="tbl"><table><thead><tr><th>Encaissée le</th><th>Mois</th><th>Lot</th><th>Cité</th><th>Mode</th><th class="n">Montant</th><th></th></tr></thead><tbody>${cots.map(d => `<tr class="click" data-a="edit" data-c="cotisations" data-id="${d.id}"><td>${fmtDate(d.date)}</td><td>${fmtMonth(d.mois)}</td><td class="mono">${esc(lotName(d.lotId))}${exTag(d)}</td><td>${esc(citeName(d.citeId))}</td><td>${esc(d.mode || '')}</td><td class="n">${money(d.montant)}</td><td class="n">${factBtn('cotisation', d.id)}</td></tr>`).join('')}</tbody></table></div>` : emptyState('Aucune cotisation encaissée', 'Enregistrez les cotisations versées par les propriétaires pour suivre le recouvrement du syndic.', READONLY ? '' : `<button class="btn primary" data-a="new" data-c="cotisations">+ Encaisser une cotisation</button>`))}
   </div>`};
 }
 
@@ -965,7 +970,150 @@ function vConsole() {
       </tbody></table></div>
     </section></div>`};
 }
-const VIEWS_R = {dashboard: vDashboard, cites: vCites, lots: vLots, ventes: vVentes, baux: vBaux, espaces: vEspaces, syndic: vSyndic, interventions: vInterventions, tiers: vTiers, params: vParams, abonnement: vAbonnement, equipe: vEquipe, console: vConsole};
+const VIEWS_R = {dashboard: vDashboard, cites: vCites, lots: vLots, ventes: vVentes, baux: vBaux, espaces: vEspaces, syndic: vSyndic, interventions: vInterventions, tiers: vTiers, factures: vFactures, params: vParams, abonnement: vAbonnement, equipe: vEquipe, console: vConsole};
+
+/* --- Factures & certification électronique SFEC (DGID Congo) --- */
+let FACT = {liste: [], cfg: null, charge: false};
+const SFEC_ST = {non_certifiee: ['Non certifiée', 'mut'], en_attente: ['SFEC en attente', 'warn'], certifiee: ['Certifiée SFEC', 'ok'], rejetee: ['Rejetée SFEC', 'bad']};
+const TYPES_DEST = {Particulier: 'individual', Entreprise: 'business', Administration: 'government', 'Étranger': 'foreign'};
+const TYPES_DEST_L = Object.fromEntries(Object.entries(TYPES_DEST).map(([k, v]) => [v, k]));
+const ENV_SFEC = {simulation: 'Simulation (essai interne, sans valeur fiscale)', sandbox: 'Test DGID (sandbox)', production: 'Production DGID'};
+const ORIG = {loyer: 'Loyer', vente: 'Vente', cotisation: 'Charges syndic', libre: 'Libre'};
+const CHAMPS_SFEC = {invoice_id: 'Numéro de facture', reference_invoice_id: 'Facture d’origine', recipient_name: 'Nom du client', recipient_niu: 'NIU du client', recipient_rccm: 'RCCM du client', recipient_address: 'Adresse du client', recipient_phone: 'Téléphone du client', recipient_email: 'E-mail du client', recipient_type: 'Type de client', items: 'Lignes', total_amount: 'Total TTC', payment_method: 'Mode de règlement'};
+const sfecChip = s => { const x = SFEC_ST[s] || SFEC_ST.non_certifiee; return `<span class="chip s-${x[1]}">${x[0]}</span>`; };
+function messagesSfec(r) {
+  if (!r) return ['Réponse vide.'];
+  if (r.ok) return [`Facture certifiée${r.simulation ? ' (simulation)' : ' SFEC'}${r.signature_courte ? ` — ${r.signature_courte}` : ''}.`];
+  if (r.anomalies && r.anomalies.length) return r.anomalies;
+  const e = r.erreur || {}; const errs = e.errors || [];
+  if (errs.length) return errs.map(x => { const base = String(x.field || '').replace(/^items\.(\d+)\.(.+)$/, (_m, i, f) => `Ligne ${Number(i) + 1} — ${CHAMPS_SFEC[f] || f}`); return `${CHAMPS_SFEC[base] || base}${base ? ' : ' : ''}${x.message || x.code || 'valeur refusée'}`; });
+  if (r.statut === 'en_attente') return [`Le service SFEC ne répond pas pour le moment${r.http ? ` (code ${r.http})` : ''}. Réessayez plus tard.`];
+  return [e.message || `Certification refusée${r.http ? ` (code ${r.http})` : ''}.`];
+}
+async function refreshFactures() {
+  if (MODE !== 'supabase' || !AGENCE) return;
+  const [f, c] = await Promise.all([
+    SB.from('factures').select('*').eq('agence_id', AGENCE.id).order('cree_le', {ascending: false}).limit(1000),
+    SB.from('sfec_config').select('environnement,actif,cle_fin,maj_le').eq('agence_id', AGENCE.id).maybeSingle()]);
+  if (f.error) { toast(sbError(f.error)); return; }
+  FACT = {liste: f.data || [], cfg: c.data || null, charge: true}; schedule();
+}
+const factureDe = ref => FACT.liste.find(x => x.origine_ref === ref && x.type === 'facture' && x.statut === 'emise');
+function factBtn(origine, id, pid) {
+  if (MODE !== 'supabase') return '';
+  const ref = `${origine}:${id}${pid ? ':' + pid : ''}`; const f = factureDe(ref);
+  if (f) return `<button class="btn sm" data-a="printFact" data-id="${f.id}" title="${esc(SFEC_ST[f.sfec_statut]?.[0] || '')}">${esc(f.numero)}</button>`;
+  return READONLY ? '' : `<button class="btn sm" data-a="facturer" data-o="${origine}" data-id="${id}" ${pid ? `data-p="${pid}"` : ''}>Facturer</button>`;
+}
+function sourceFacture(o, id, pid) {
+  if (o === 'loyer') { const b = byId('baux', id); const p = (b?.paiements || []).find(x => x.id === pid); if (!b || !p) return null;
+    return {tiersId: b.tiersId, designation: `Loyer et charges ${fmtMonth(p.mois)} — ${lotName(b.lotId)}, ${lotCiteName(b.lotId)}`, montant: p.montant, date: p.date, mode: p.mode, type: 'service'}; }
+  if (o === 'vente') { const v = byId('ventes', id); const p = (v?.paiements || []).find(x => x.id === pid); if (!v || !p) return null;
+    return {tiersId: v.tiersId, designation: `Versement sur la vente du lot ${lotName(v.lotId)}, ${lotCiteName(v.lotId)}`, montant: p.montant, date: p.date, mode: p.mode, type: 'product'}; }
+  if (o === 'cotisation') { const c = byId('cotisations', id); if (!c) return null; const v = S.ventes.find(x => x.lotId === c.lotId);
+    return {tiersId: v?.tiersId || '', designation: `Cotisation syndic ${fmtMonth(c.mois)} — lot ${lotName(c.lotId)}, ${citeName(c.citeId)}`, montant: c.montant, date: c.date, mode: c.mode, type: 'service'}; }
+  return null;
+}
+function openFacturer(o, id, pid) {
+  const src = sourceFacture(o, id, pid); if (!src) { toast('Encaissement introuvable.'); return; }
+  const tl = S.tiers.slice().sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+  const t0 = byId('tiers', src.tiersId) || {};
+  const opt = (arr, v) => arr.map(([k, l]) => `<option value="${esc(k)}" ${String(v) === String(k) ? 'selected' : ''}>${esc(l)}</option>`).join('');
+  modal(`<form id="factForm" class="form" novalidate><h2>Émettre une facture</h2>
+    <p style="margin:0;color:var(--muted);font-size:13px">Une fois émise, la facture reçoit un numéro définitif et ne peut plus être modifiée : une erreur se corrige par un avoir.</p>
+    <div class="grid2">
+      <div class="fld"><label for="fa_tiers">Client *</label><select id="fa_tiers" name="tiers"><option value="">— Choisir —</option>${tl.map(t => `<option value="${t.id}" ${t.id === src.tiersId ? 'selected' : ''}>${esc(t.nom)}</option>`).join('')}</select></div>
+      <div class="fld half"><label for="fa_type">Type de client</label><select id="fa_type" name="type">${opt(Object.entries(TYPES_DEST_L), TYPES_DEST[t0.typeDest] || 'individual')}</select></div>
+      <div class="fld half"><label for="fa_niu">NIU du client</label><input id="fa_niu" name="niu" value="${esc(t0.niu || '')}" placeholder="16 ou 17 caractères"><span class="hint">Obligatoire pour une entreprise ou une administration</span></div>
+      <div class="fld half"><label for="fa_rccm">RCCM du client</label><input id="fa_rccm" name="rccm" value="${esc(t0.rccm || '')}"></div>
+      <div class="fld half"><label for="fa_assuj">Client assujetti à la TVA</label><select id="fa_assuj" name="assuj">${opt([['0', 'Non'], ['1', 'Oui']], t0.assujetti === 'Oui' ? '1' : '0')}</select></div>
+      <div class="fld"><label for="fa_des">Désignation *</label><input id="fa_des" name="des" value="${esc(src.designation)}"></div>
+      <div class="fld half"><label for="fa_mt">Montant encaissé TTC *</label><input id="fa_mt" name="mt" type="number" min="0" step="1" value="${esc(num(src.montant))}"></div>
+      <div class="fld half"><label for="fa_tva">TVA</label><select id="fa_tva" name="tva">${opt([['0', '0 % (exonéré)'], ['5', '5 % (taux réduit)'], ['18', '18 % (taux normal)']], '0')}</select><span class="hint">Le hors-taxe est déduit du montant TTC</span></div>
+      <div class="fld half"><label for="fa_date">Date de facture</label><input id="fa_date" name="date" type="date" value="${esc(src.date || TODAY)}"></div>
+      <div class="fld half"><label for="fa_mode">Mode de règlement</label><select id="fa_mode" name="mode">${opt(MODES_PAY.map(m => [m, m]), src.mode || 'Espèces')}</select></div>
+      <div class="fld"><label><input type="checkbox" name="cert" checked style="width:auto;margin-right:8px">Certifier immédiatement auprès du SFEC</label></div>
+    </div><div class="err" id="faErr" hidden></div>
+    <div class="formbar"><span class="sp"></span><button type="button" class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary">Émettre la facture</button></div></form>`, async form => {
+    const err = $('#faErr'); const fail = m => { err.hidden = false; err.textContent = m; };
+    const t = byId('tiers', form.tiers.value); if (!t) return fail('Choisissez le client.');
+    const ttc = Math.round(num(form.mt.value)); if (ttc <= 0) return fail('Le montant doit être positif.');
+    const taux = Number(form.tva.value); const ht = Math.round(ttc / (1 + taux / 100));
+    const niu = form.niu.value.replace(/\s/g, ''), rccm = form.rccm.value.trim(), type = form.type.value, assuj = form.assuj.value === '1';
+    const btn = form.querySelector('button.primary'); btn.disabled = true;
+    const fid = await rpc('emettre_facture', {a: AGENCE.id, p: {origine: o, origine_ref: `${o}:${id}${pid ? ':' + pid : ''}`, date: form.date.value, mode_reglement: form.mode.value, objet: form.des.value.trim(),
+      client: {nom: t.nom, type, niu, rccm, adresse: t.adresse || '', tel: t.tel || '', email: t.email || '', assujetti: assuj},
+      lignes: [{designation: form.des.value.trim(), type: src.type, quantite: 1, prix_unitaire: ht, taux_tva: taux}]}});
+    btn.disabled = false; if (!fid) return;
+    const cert = form.cert.checked; closeModal();
+    if ((t.niu || '') !== niu || (t.rccm || '') !== rccm || TYPES_DEST[t.typeDest] !== type || (t.assujetti === 'Oui') !== assuj) save('tiers', {...t, niu, rccm, typeDest: TYPES_DEST_L[type], assujetti: assuj ? 'Oui' : 'Non'});
+    toast('Facture émise.'); await refreshFactures();
+    if (cert) await certifierFacture(fid);
+  });
+}
+async function certifierFacture(fid) {
+  toast('Certification en cours…');
+  const r = await rpc('sfec_certifier', {f: fid}); if (!r) return;
+  await refreshFactures();
+  const m = messagesSfec(r);
+  if (r.ok) toast(m[0]);
+  else modal(`<h2>Certification non aboutie</h2><ul style="margin:0;padding-left:18px">${m.map(x => `<li>${esc(x)}</li>`).join('')}</ul><div class="formbar"><span class="sp"></span><button class="btn primary" data-a="closeModal">Fermer</button></div>`);
+}
+function openAvoir(fid) {
+  const f = FACT.liste.find(x => x.id === fid); if (!f) return;
+  modal(`<form id="avForm" class="form" novalidate><h2>Avoir sur la facture ${esc(f.numero)}</h2><p style="margin:0">L’avoir annule la totalité de la facture (${money(f.total_ttc)}). L’encaissement pourra ensuite être refacturé correctement.</p>
+    <div class="grid2"><div class="fld"><label for="av_motif">Motif</label><input id="av_motif" name="motif" placeholder="Erreur sur le client, montant incorrect…"></div></div>
+    <div class="formbar"><span class="sp"></span><button type="button" class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary">Émettre l’avoir</button></div></form>`, async form => {
+    const nid = await rpc('emettre_avoir', {f: fid, p_motif: form.motif.value}); if (!nid) return;
+    closeModal(); toast('Avoir émis.'); await refreshFactures();
+    if (f.sfec_statut === 'certifiee') await certifierFacture(nid);
+  });
+}
+function factureDoc(f) {
+  const orig = f.avoir_de ? FACT.liste.find(x => x.id === f.avoir_de) : null;
+  const sim = f.sfec_environnement === 'simulation', cert = f.sfec_statut === 'certifiee';
+  const qr = f.sfec_qr_code ? (f.sfec_qr_code.startsWith('data:') || f.sfec_qr_code.startsWith('http') ? f.sfec_qr_code : 'data:image/png;base64,' + f.sfec_qr_code) : '';
+  const lignes = f.lignes || [];
+  return docShell(`${f.type === 'avoir' ? 'Avoir' : 'Facture'} ${f.numero}`, `
+  ${sim ? '<p style="background:#fdecea;color:#9b1c1c;padding:8px 12px;border-radius:6px;font-weight:bold">SIMULATION — document d’essai sans valeur fiscale</p>' : ''}
+  <div style="display:flex;justify-content:space-between;gap:24px"><div><h1>${f.type === 'avoir' ? 'Facture d’avoir' : 'Facture'} n° ${esc(f.numero)}</h1><p class="mut">Date : ${fmtDate(f.date_facture)}${orig ? ` · Annule la facture n° ${esc(orig.numero)}` : ''}</p></div>
+  <div style="text-align:right"><strong>${esc(f.client_nom)}</strong><div class="mut">${esc(TYPES_DEST_L[f.client_type] || '')}${f.client_niu ? '<br>NIU : ' + esc(f.client_niu) : ''}${f.client_rccm ? '<br>RCCM : ' + esc(f.client_rccm) : ''}${f.client_adresse ? '<br>' + esc(f.client_adresse) : ''}${f.client_tel ? '<br>' + esc(f.client_tel) : ''}</div></div></div>
+  <table><tr><th>Désignation</th><th class="n">Qté</th><th class="n">Prix unitaire HT</th><th class="n">TVA</th><th class="n">Total TTC</th></tr>
+  ${lignes.map(l => `<tr><td>${esc(l.designation)}</td><td class="n">${nf.format(l.quantite)}</td><td class="n">${money(l.prix_unitaire)}</td><td class="n">${nf.format(l.taux_tva)} %</td><td class="n">${money(l.total_ttc)}</td></tr>`).join('')}
+  <tr><td colspan="4">Total hors taxes</td><td class="n">${money(f.total_ht)}</td></tr><tr><td colspan="4">TVA</td><td class="n">${money(f.total_tva)}</td></tr>
+  <tr class="tot"><td colspan="4">${f.type === 'avoir' ? 'Montant de l’avoir TTC' : 'Total TTC'}</td><td class="n">${money(f.total_ttc)}</td></tr></table>
+  <p class="mut">Mode de règlement : ${esc(f.mode_reglement || '—')}</p>
+  <div style="display:flex;gap:16px;align-items:center;border:1px solid #d8dfdb;border-radius:8px;padding:12px;margin-top:24px">
+    ${qr ? `<img src="${esc(qr)}" alt="QR code SFEC" width="120" height="120">` : ''}
+    <div>${cert ? `<strong>${sim ? 'Certification simulée' : 'Facture certifiée — SFEC / DGID Congo'}</strong><br><span class="mut">Code : ${esc(f.sfec_signature_courte || '')}<br>Certifiée le ${f.sfec_date_certification ? new Date(f.sfec_date_certification).toLocaleString('fr-FR') : ''}</span>${f.sfec_signature ? `<div class="mut" style="font-size:10px;word-break:break-all;margin-top:4px">${esc(f.sfec_signature)}</div>` : ''}` : '<strong>Facture non certifiée SFEC</strong>'}</div>
+  </div>`);
+}
+function vFactures() {
+  if (MODE !== 'supabase') return {html: emptyState('Facturation indisponible', 'La facturation certifiée nécessite le stockage en ligne de l’agence.')};
+  if (!FACT.charge) { refreshFactures(); return {html: emptyState('Chargement des factures…', '')}; }
+  const tab = UI.f.factTab || 'Factures'; const L = FACT.liste; const env = FACT.cfg?.environnement || 'simulation';
+  const nonCert = L.filter(f => f.sfec_statut !== 'certifiee').length;
+  const mois = L.filter(f => (f.date_facture || '').startsWith(THIS_MONTH)).reduce((s, f) => s + (f.type === 'avoir' ? -1 : 1) * num(f.total_ttc), 0);
+  const tabs = `<div class="tabs">${['Factures', 'Réglages SFEC'].map(t => `<button data-a="tab" data-k="factTab" data-v="${t}" aria-pressed="${tab === t}">${t}</button>`).join('')}</div>`;
+  const head = `<div class="banner ${env === 'production' ? 'info' : ''}" style="margin:0">Certification SFEC : <b>${esc(ENV_SFEC[env])}</b>${FACT.cfg && !FACT.cfg.actif ? ' — désactivée' : ''}.${env === 'simulation' ? ' Les factures certifiées en simulation n’ont aucune valeur fiscale.' : ''}</div>`;
+  if (tab === 'Réglages SFEC') {
+    const adm = isAdmin(); const c = FACT.cfg || {};
+    return {html: `<div class="grid" style="gap:16px">${tabs}<section class="panel"><div class="ph"><h2>Certification électronique des factures (SFEC)</h2><p>Système de facturation électronique certifiée de la DGID — Congo</p></div>
+      <form id="sfecForm" class="form"><div class="grid2">
+        <div class="fld"><label for="sf_env">Environnement</label><select id="sf_env" name="env" ${adm ? '' : 'disabled'}>${Object.entries(ENV_SFEC).map(([k, l]) => `<option value="${k}" ${env === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select><span class="hint">Restez en simulation tant que la DGID ne vous a pas remis vos accès.</span></div>
+        <div class="fld"><label for="sf_cle">Clé d’accès SFEC (fournie par la DGID)</label><input id="sf_cle" name="cle" type="password" autocomplete="off" ${adm ? '' : 'disabled'} placeholder="${c.cle_fin ? 'Clé enregistrée (…' + esc(c.cle_fin) + ') — laisser vide pour la conserver' : 'Aucune clé enregistrée'}"><span class="hint">Conservée chiffrée sur le serveur ; elle n’est jamais réaffichée.</span></div>
+        <div class="fld half"><label for="sf_actif">Certification</label><select id="sf_actif" name="actif" ${adm ? '' : 'disabled'}><option value="1" ${c.actif !== false ? 'selected' : ''}>Activée</option><option value="0" ${c.actif === false ? 'selected' : ''}>Désactivée</option></select></div>
+      </div>${adm ? '<div class="formbar"><span class="sp"></span><button class="btn primary">Enregistrer</button></div>' : '<p style="color:var(--muted);font-size:13px">Réglages modifiables par un administrateur de l’agence.</p>'}</form></section>
+      <section class="panel"><div class="ph"><h2>À préparer avec la DGID</h2></div><ul style="margin:0;padding-left:18px;line-height:1.7"><li>Le NIU de l’agence et son inscription au SFEC.</li><li>Une clé d’accès de test (sandbox), puis de production.</li><li>Le NIU (16 ou 17 caractères) de chaque client entreprise ou administration, à saisir dans sa fiche.</li></ul></section></div>`};
+  }
+  return {actions: '', html: `<div class="grid" style="gap:16px">${head}
+    <div class="grid g-kpi"><div class="kpi"><span class="l">Factures et avoirs</span><span class="v">${L.length}</span></div><div class="kpi"><span class="l">Non certifiés</span><span class="v">${nonCert}</span></div><div class="kpi hl"><span class="l">Facturé en ${esc(fmtMonth(THIS_MONTH))}</span><span class="v">${money(mois)}</span></div></div>
+    ${tabs}
+    ${L.length ? `<div class="tbl"><table><thead><tr><th>Numéro</th><th>Date</th><th>Client</th><th>Origine</th><th class="n">TTC</th><th>État</th><th>SFEC</th><th></th></tr></thead><tbody>
+    ${L.map(f => `<tr><td class="mono"><b>${esc(f.numero)}</b>${f.type === 'avoir' ? '<span class="sub">Avoir</span>' : ''}</td><td>${fmtDate(f.date_facture)}</td><td>${esc(f.client_nom)}<span class="sub">${esc(f.objet || '')}</span></td><td>${esc(ORIG[f.origine] || '')}</td><td class="n">${f.type === 'avoir' ? '−' : ''}${money(f.total_ttc)}</td><td>${f.statut === 'annulee' ? '<span class="chip s-warn">Annulée par avoir</span>' : '<span class="chip s-ok">Émise</span>'}</td><td>${sfecChip(f.sfec_statut)}${f.sfec_environnement === 'simulation' ? '<span class="sub">simulation</span>' : ''}</td>
+      <td class="n" style="white-space:nowrap"><button class="btn sm" data-a="printFact" data-id="${f.id}">Imprimer</button>${READONLY ? '' : `${f.sfec_statut !== 'certifiee' ? ` <button class="btn sm primary" data-a="certFact" data-id="${f.id}">Certifier</button>` : ''}${f.sfec_statut === 'rejetee' || f.sfec_statut === 'en_attente' ? ` <button class="btn sm ghost" data-a="errFact" data-id="${f.id}">Détails</button>` : ''}${f.type === 'facture' && f.statut === 'emise' ? ` <button class="btn sm ghost danger" data-a="avoirFact" data-id="${f.id}">Avoir</button>` : ''}`}</td></tr>`).join('')}
+    </tbody></table></div>` : emptyState('Aucune facture', 'Émettez une facture depuis un loyer encaissé (fiche du bail), un versement sur une vente ou une cotisation du syndic, avec le bouton « Facturer ».')}</div>`};
+}
 
 /* ---------- tiroir de détail ---------- */
 function renderDrawer() {
@@ -1002,7 +1150,7 @@ function dVente(v) {
     <div class="bar" style="height:8px"><i style="width:${c.ratio * 100}%"></i></div>
     ${READONLY ? '' : `<div class="formbar" style="margin:0"><button class="btn primary" data-a="payvente" data-id="${v.id}">+ Enregistrer un paiement</button><button class="btn" data-a="${hasF('quittances') ? 'releve' : 'upsell'}" data-f="quittances" data-id="${v.id}">Relevé de compte</button><span class="sp"></span><button class="btn ghost" data-a="edit" data-c="ventes" data-id="${v.id}">Modifier</button></div>`}
     <div><h3>Échéancier</h3><div class="tbl"><table><thead><tr><th>Échéance</th><th>Date</th><th class="n">Montant</th><th class="n">Réglé</th><th>État</th></tr></thead><tbody>${c.sched.map(e => `<tr><td>${esc(e.label)}</td><td>${fmtDate(e.date)}</td><td class="n">${money(e.montant)}</td><td class="n">${money(e.paye)}</td><td>${chip(e.etat)}</td></tr>`).join('')}</tbody></table></div></div>
-    <div><h3>Paiements reçus</h3>${pays.length ? `<div class="tbl"><table><thead><tr><th>Date</th><th>Mode</th><th>Référence</th><th class="n">Montant</th><th></th></tr></thead><tbody>${pays.map(p => `<tr><td>${fmtDate(p.date)}</td><td>${esc(p.mode || '')}</td><td class="mono">${esc(p.ref || '')}</td><td class="n">${money(p.montant)}</td><td class="n">${READONLY ? '' : `<button class="btn sm ghost danger" data-a="delpay" data-c="ventes" data-id="${v.id}" data-p="${p.id}" aria-label="Supprimer ce paiement">Retirer</button>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aucun paiement reçu.</div>'}</div>
+    <div><h3>Paiements reçus</h3>${pays.length ? `<div class="tbl"><table><thead><tr><th>Date</th><th>Mode</th><th>Référence</th><th class="n">Montant</th><th></th></tr></thead><tbody>${pays.map(p => `<tr><td>${fmtDate(p.date)}</td><td>${esc(p.mode || '')}</td><td class="mono">${esc(p.ref || '')}</td><td class="n">${money(p.montant)}</td><td class="n" style="white-space:nowrap">${factBtn('vente', v.id, p.id)} ${READONLY ? '' : `<button class="btn sm ghost danger" data-a="delpay" data-c="ventes" data-id="${v.id}" data-p="${p.id}" aria-label="Supprimer ce paiement">Retirer</button>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aucun paiement reçu.</div>'}</div>
     ${v.notaire || v.notes ? `<div><h3>Acte & notes</h3><p style="margin:0;white-space:pre-wrap">${esc([v.notaire, v.notes].filter(Boolean).join('\n'))}</p></div>` : ''}`};
 }
 function dBail(b) {
@@ -1011,7 +1159,7 @@ function dBail(b) {
     <div class="sumrow"><div><span>Loyer + charges</span><b>${money(c.mens)}</b></div><div><span>Caution</span><b>${money(b.caution)}</b></div><div><span>Total versé</span><b>${money(c.paid)}</b></div><div><span>Impayés</span><b style="color:${c.impaye > .5 ? 'var(--bad)' : 'inherit'}">${money(c.impaye)}</b></div></div>
     ${READONLY ? '' : `<div class="formbar" style="margin:0">${b.statut === 'Actif' ? `<button class="btn primary" data-a="payrent" data-id="${b.id}">+ Encaisser un loyer</button>` : ''}<span class="sp"></span><button class="btn ghost" data-a="edit" data-c="baux" data-id="${b.id}">Modifier le bail</button></div>`}
     <div><h3>Loyers mois par mois</h3>${c.rows.length ? `<div class="months">${c.rows.slice().reverse().map(r => `<div class="mo s-${ST[r.etat]}"><b>${fmtMonth(r.m)}</b><span>${r.etat}</span></div>`).join('')}</div>` : '<div class="empty">Le bail n’a pas encore commencé.</div>'}</div>
-    <div><h3>Encaissements & quittances</h3>${pays.length ? `<div class="tbl"><table><thead><tr><th>Mois</th><th>Payé le</th><th>Mode</th><th class="n">Montant</th><th></th></tr></thead><tbody>${pays.map(p => `<tr><td>${fmtMonth(p.mois)}</td><td>${fmtDate(p.date)}</td><td>${esc(p.mode || '')}</td><td class="n">${money(p.montant)}</td><td class="n" style="white-space:nowrap"><button class="btn sm" data-a="${hasF('quittances') ? 'quittance' : 'upsell'}" data-f="quittances" data-id="${b.id}" data-p="${p.id}">Quittance</button>${READONLY ? '' : ` <button class="btn sm ghost danger" data-a="delpay" data-c="baux" data-id="${b.id}" data-p="${p.id}">Retirer</button>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aucun loyer encaissé.</div>'}</div>
+    <div><h3>Encaissements & quittances</h3>${pays.length ? `<div class="tbl"><table><thead><tr><th>Mois</th><th>Payé le</th><th>Mode</th><th class="n">Montant</th><th></th></tr></thead><tbody>${pays.map(p => `<tr><td>${fmtMonth(p.mois)}</td><td>${fmtDate(p.date)}</td><td>${esc(p.mode || '')}</td><td class="n">${money(p.montant)}</td><td class="n" style="white-space:nowrap"><button class="btn sm" data-a="${hasF('quittances') ? 'quittance' : 'upsell'}" data-f="quittances" data-id="${b.id}" data-p="${p.id}">Quittance</button> ${factBtn('loyer', b.id, p.id)}${READONLY ? '' : ` <button class="btn sm ghost danger" data-a="delpay" data-c="baux" data-id="${b.id}" data-p="${p.id}">Retirer</button>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Aucun loyer encaissé.</div>'}</div>
     ${b.notes ? `<div><h3>Notes</h3><p style="margin:0;white-space:pre-wrap">${esc(b.notes)}</p></div>` : ''}`};
 }
 function dEspace(e) {
@@ -1335,7 +1483,7 @@ async function selectAgence(ag) {
   hideGate(); render();
   await refreshEtat();
   await sbLoadAll(); sbSubscribe();
-  refreshAbo(); refreshEquipe(); if (SUPER) refreshConsole();
+  refreshAbo(); refreshEquipe(); refreshFactures(); if (SUPER) refreshConsole();
   render();
 }
 async function refreshEtat() {
@@ -1567,6 +1715,11 @@ document.addEventListener('click', async ev => {
     case 'purge': { const n = COLS.reduce((s, c) => s + S[c].filter(x => x.exemple).length, 0);
       confirmBox(`Supprimer les ${n} enregistrements d’exemple ? Vos propres saisies sont conservées.`, 'Supprimer les exemples', async () => { for (const c of COLS) for (const x of S[c].filter(x => x.exemple)) { if (!await remove(c, x.id)) return; } toast('Exemples supprimés.'); }); break; }
     case 'upsell': upsellModal(UPSELL[el.dataset.f] || 'Cette fonction n’est pas incluse dans votre formule.'); break;
+    case 'facturer': openFacturer(el.dataset.o, id, el.dataset.p); break;
+    case 'certFact': certifierFacture(id); break;
+    case 'avoirFact': openAvoir(id); break;
+    case 'printFact': { let f = FACT.liste.find(x => x.id === id); if (!f) { await refreshFactures(); f = FACT.liste.find(x => x.id === id); } if (f) download(`${f.type === 'avoir' ? 'Avoir' : 'Facture'} ${f.numero}.html`, factureDoc(f)); break; }
+    case 'errFact': { const f = FACT.liste.find(x => x.id === id); if (f) modal(`<h2>Facture ${esc(f.numero)} — ${esc(SFEC_ST[f.sfec_statut][0])}</h2><ul style="margin:0;padding-left:18px">${messagesSfec({ok: false, statut: f.sfec_statut, erreur: f.sfec_erreur}).map(x => `<li>${esc(x)}</li>`).join('')}</ul><p style="color:var(--muted);font-size:13px">${f.sfec_tentatives} tentative(s)${f.sfec_derniere_tentative ? ', la dernière le ' + new Date(f.sfec_derniere_tentative).toLocaleString('fr-FR') : ''}.</p><div class="formbar"><span class="sp"></span><button class="btn primary" data-a="closeModal">Fermer</button></div>`); break; }
     case 'goAbo': closeModal(); go('abonnement'); break;
     case 'gate': showGate(el.dataset.v); break;
     case 'reload': location.reload(); break;
@@ -1595,6 +1748,7 @@ document.addEventListener('keydown', ev => {
 document.addEventListener('submit', async ev => {
   ev.preventDefault();
   const f = ev.target, id = f.id;
+  if (id === 'sfecForm') { if (await rpc('sfec_regler', {a: AGENCE.id, p_env: f.env.value, p_cle: f.cle.value, p_actif: f.actif.value === '1'}, 'Réglages SFEC enregistrés.')) { f.cle.value = ''; refreshFactures(); } return; }
   if (id === 'cfgForm') { if ((await saveCfg({societe: f.societe.value.trim(), devise: f.devise.value.trim() || 'FCFA', tel: f.tel.value.trim(), adresse: f.adresse.value.trim()})) !== false) toast('Paramètres enregistrés.'); return; }
   const btn = f.querySelector('button.primary'); const busy = b => { if (btn) btn.disabled = b; };
   if (id === 'loginForm') { busy(true); const {error} = await SB.auth.signInWithPassword({email: f.email.value.trim(), password: f.password.value}); busy(false); if (error) gateMsg(authErr(error)); return; }
