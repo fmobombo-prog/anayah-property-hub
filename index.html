@@ -335,7 +335,7 @@ const ROLES = {admin: 'Administrateur', gestionnaire: 'Gestionnaire', lecture: '
 const STATUT_ABO = {essai: ['Essai gratuit', 'info'], actif: ['Actif', 'ok'], grace: ['Période de grâce', 'warn'], expire: ['Expiré', 'bad']};
 const hasF = f => MODE !== 'supabase' || !!(ETAT && ETAT.plan && (ETAT.plan.fonctions || []).includes(f));
 const isAdmin = () => MODE !== 'supabase' || !!(ETAT && ETAT.role === 'admin');
-const devY = () => esc((ETAT && ETAT.devise_ydila) || 'FCFA');
+const devY = () => esc((ETAT && ETAT.devise) || 'FCFA');
 const limTxt = (n, sing, plur) => n == null ? `${plur} illimités` : `${nf.format(n)} ${n > 1 ? plur : sing}`;
 function sbError(e) {
   if (!e) return 'Erreur inconnue.';
@@ -1385,7 +1385,7 @@ async function refreshEquipe() {
 }
 async function refreshConsole() {
   if (!SUPER) return;
-  const [a, p, pl, pr] = await Promise.all([SB.rpc('console_agences'), SB.from('paiements_abonnement').select('*, agence:agences(nom)').order('declare_le', {ascending: false}).limit(500), SB.from('plans').select('*').order('ordre'), SB.from('parametres_ydila').select('*').eq('id', 1).single()]);
+  const [a, p, pl, pr] = await Promise.all([SB.rpc('console_agences'), SB.from('paiements_abonnement').select('*, agence:agences(nom)').order('declare_le', {ascending: false}).limit(500), SB.from('plans').select('*').order('ordre'), SB.from('parametres').select('*').eq('id', 1).single()]);
   if (a.error) { toast(sbError(a.error)); return; }
   CONSOLE = {agences: a.data || [], paiements: p.data || [], plans: pl.data || [], params: pr.data || {}}; schedule();
 }
@@ -1418,7 +1418,7 @@ function openDeclare(code) {
       if (error) { err.hidden = false; err.textContent = sbError(error); form.querySelector('button.primary').disabled = false; return; }
       closeModal(); toast('Paiement déclaré. Votre abonnement sera prolongé dès sa validation par l’administrateur.'); refreshAbo();
     });
-  const upd = () => { const pl = ABO.plans.find(x => x.code === $('#d_plan').value), cyc = $('#d_cycle').value; $('#d_montant').textContent = nf.format(prixDe(pl, cyc)) + ' ' + ((ETAT && ETAT.devise_ydila) || 'FCFA'); $('#d_hint').textContent = cyc === 'annuel' && pl.mois_offerts_annuel ? `${pl.mois_offerts_annuel} mois offerts par rapport au paiement mensuel` : ''; };
+  const upd = () => { const pl = ABO.plans.find(x => x.code === $('#d_plan').value), cyc = $('#d_cycle').value; $('#d_montant').textContent = nf.format(prixDe(pl, cyc)) + ' ' + ((ETAT && ETAT.devise) || 'FCFA'); $('#d_hint').textContent = cyc === 'annuel' && pl.mois_offerts_annuel ? `${pl.mois_offerts_annuel} mois offerts par rapport au paiement mensuel` : ''; };
   $('#d_plan').addEventListener('change', upd); $('#d_cycle').addEventListener('change', upd); upd();
 }
 function openPlanEdit(code) {
@@ -1453,7 +1453,7 @@ function openYParams() {
     </div><div class="err" id="formErr" hidden></div>
     <div class="formbar"><span class="sp"></span><button type="button" class="btn ghost" data-a="closeModal">Annuler</button><button class="btn primary">Enregistrer</button></div></form>`,
     async form => {
-      const {error} = await SB.from('parametres_ydila').update({devise: form.devise.value.trim() || 'FCFA', jours_essai: Math.max(0, Math.round(num(form.essai.value))), jours_grace: Math.max(0, Math.round(num(form.grace.value))), instructions_paiement: form.instr.value.trim()}).eq('id', 1);
+      const {error} = await SB.from('parametres').update({devise: form.devise.value.trim() || 'FCFA', jours_essai: Math.max(0, Math.round(num(form.essai.value))), jours_grace: Math.max(0, Math.round(num(form.grace.value))), instructions_paiement: form.instr.value.trim()}).eq('id', 1);
       if (error) { const e = $('#formErr'); e.hidden = false; e.textContent = sbError(error); return; }
       closeModal(); toast('Paramètres enregistrés.'); refreshConsole(); refreshEtat();
     });
