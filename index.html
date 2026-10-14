@@ -598,7 +598,7 @@ function bannerHtml() {
   if (MODE === 'local') return `<div class="banner">${SBCFG.supabaseUrl ? 'Le service en ligne est injoignable.' : 'Le stockage en ligne n’est pas configuré.'} Vos saisies sont conservées uniquement dans ce navigateur. Pensez à télécharger régulièrement une sauvegarde depuis « Paramètres ».</div>`;
   if (MODE === 'supabase' && ETAT) {
     const fin = ETAT.fin_droits, j = daysBetween(TODAY, fin), renew = isAdmin() ? `<button class="link" data-a="go" data-v="abonnement">${ETAT.statut === 'essai' ? 'Choisir une formule' : 'Renouveler'}</button>` : '';
-    if (ETAT.statut === 'essai') return `<div class="banner info">Essai gratuit Ydila : ${j} jour(s) restant(s), avec toutes les fonctions de la formule Pro.${renew}</div>`;
+    if (ETAT.statut === 'essai') return `<div class="banner info">Essai gratuit : ${j} jour(s) restant(s), avec toutes les fonctions de la formule Pro.${renew}</div>`;
     if (ETAT.statut === 'grace') return `<div class="banner">Votre abonnement Ydila a pris fin le ${fmtDate(fin)}. Il reste ${j + ETAT.jours_grace} jour(s) avant le passage en lecture seule.${renew}</div>`;
     if (ETAT.statut === 'expire') return `<div class="banner bad">Abonnement Ydila expiré : l’application est en lecture seule depuis le ${fmtDate(addDays(fin, ETAT.jours_grace + 1))}. Vos données sont conservées et restent consultables et exportables.${renew}</div>`;
     if (ETAT.role === 'lecture') return `<div class="banner info">Votre rôle dans l’agence permet la consultation uniquement.</div>`;
@@ -1503,14 +1503,18 @@ async function importData(o) {
       for (let i = 0; i < arr.length; i += 500) {
         const rows = arr.slice(i, i + 500).map(r => { const {id, ...d} = r; return {agence_id: AGENCE.id, collection: c, id: String(id || uid()), data: d}; });
         const {error} = await SB.from('enregistrements').upsert(rows);
-        if (error) { toast(sbError(error) + ` (${n} importé(s) avant l’erreur)`); await sbLoadAll(); refreshEtat(); schedule(); return; }
+        if (error) {
+          if (!o.__tolerant) { toast(sbError(error) + ` (${n} importé(s) avant l’erreur)`); await sbLoadAll(); refreshEtat(); schedule(); return; }
+          for (const row of rows) { const r2 = await SB.from('enregistrements').upsert(row); if (r2.error) { o.__errs = (o.__errs || []); o.__errs.push(sbError(r2.error)); } else n++; }
+          continue;
+        }
         n += rows.length;
       }
     } else for (const r of arr) { if (!(await save(c, r))) return; n++; }
   }
   if (MODE === 'supabase') { await sbLoadAll(); refreshEtat(); }
   if (o.config && !READONLY && isAdmin()) await saveCfg({devise: o.config.devise || CFG.devise, tel: o.config.tel || CFG.tel, adresse: o.config.adresse || CFG.adresse});
-  toast(`${n} enregistrement(s) importé(s).`); schedule();
+  toast(o.__errs && o.__errs.length ? `${n} enregistrement(s) chargé(s), ${o.__errs.length} ignoré(s) : ${o.__errs[0]}` : `${n} enregistrement(s) importé(s).`); schedule();
 }
 
 /* ---------- interactions ---------- */
@@ -1558,7 +1562,7 @@ document.addEventListener('click', async ev => {
     case 'releve': { const v = byId('ventes', id); download(`Releve ${lotName(v.lotId)} ${tiersName(v.tiersId)}.html`, releve(v)); break; }
     case 'csv': { const k = el.dataset.k; download(`anayah-${k}-${TODAY}.csv`, csv(CSV[k]())); break; }
     case 'backup': { const o = {exporte: new Date().toISOString(), config: CFG}; COLS.forEach(c => o[c] = S[c]); download(`anayah-gestim-sauvegarde-${TODAY}.json`, JSON.stringify(o, null, 2)); break; }
-    case 'seedEx': { confirmBox('Charger l’agence exemple ? Une cité fictive complète (lots, ventes, locations, syndic, maintenance) sera ajoutée à vos données. Vous pourrez la supprimer en un clic depuis Paramètres.', 'Charger les exemples', async () => { await importData(exempleData()); }); break; }
+    case 'seedEx': { confirmBox('Charger l’agence exemple ? Une cité fictive complète (lots, ventes, locations, syndic, maintenance) sera ajoutée à vos données. Vous pourrez la supprimer en un clic depuis Paramètres.', 'Charger les exemples', async () => { toast('Chargement de l’agence exemple…'); try { const d = exempleData(); d.__tolerant = true; await importData(d); } catch (e) { console.error(e); toast('Échec du chargement des exemples : ' + (e.message || e)); } }); break; }
     case 'purge': { const n = COLS.reduce((s, c) => s + S[c].filter(x => x.exemple).length, 0);
       confirmBox(`Supprimer les ${n} enregistrements d’exemple ? Vos propres saisies sont conservées.`, 'Supprimer les exemples', async () => { for (const c of COLS) for (const x of S[c].filter(x => x.exemple)) { if (!await remove(c, x.id)) return; } toast('Exemples supprimés.'); }); break; }
     case 'upsell': upsellModal(UPSELL[el.dataset.f] || 'Cette fonction n’est pas incluse dans votre formule.'); break;
