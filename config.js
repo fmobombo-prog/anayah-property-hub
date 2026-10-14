@@ -1,4 +1,4 @@
-// Configuration du stockage en ligne d'Anayah Gestim (abonnements Ydila).
+// Configuration du stockage en ligne d'Anayah Gestim (abonnements des agences).
 //
 // Renseignez l'URL de votre projet Supabase et sa clé publique « anon »
 // (Supabase → Project Settings → API). Cette clé est faite pour être publique :

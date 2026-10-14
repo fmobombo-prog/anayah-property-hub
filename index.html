@@ -231,7 +231,7 @@ td .sub{display:block;color:var(--muted);font-size:12px}
 }
 @media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
 
-/* Ydila : connexion, abonnements, équipe, console */
+/* Connexion, abonnements, équipe, console */
 .app[hidden]{display:none}
 .gate{min-height:100%;display:grid;place-items:center;padding:32px 16px;background:var(--side)}
 .gbox{background:var(--surface);color:var(--ink);border-radius:18px;padding:28px;width:min(440px,100%);display:flex;flex-direction:column;gap:18px;box-shadow:var(--shadow)}
@@ -325,7 +325,7 @@ function upsertLocal(col, rec) { const i = S[col].findIndex(x => x.id === rec.id
 const daysBetween = (a, b) => Math.round((new Date(b + 'T00:00') - new Date(a + 'T00:00')) / 864e5);
 const addDays = (d, n) => { const t = new Date(d + 'T00:00'); t.setDate(t.getDate() + n); return iso(t); };
 
-/* ---------- Ydila : abonnements et stockage en ligne (Supabase) ---------- */
+/* ---------- Abonnements et stockage en ligne (Supabase) ---------- */
 const SBCFG = window.ANAYAH_CONFIG || {};
 let SB = null, SESSION = null, SESSION_UID = null, AGENCE = null, ETAT = null, SUPER = false, MES_AGENCES = [], CHAN = null;
 let RECOVERY = /type=recovery/.test(location.hash);
@@ -886,7 +886,7 @@ function vParams() {
     </section></div>`};
 }
 
-/* --- Abonnement Ydila --- */
+/* --- Abonnement --- */
 function vAbonnement() {
   if (!ETAT) return {html: emptyState('Chargement de votre abonnement…', '')};
   const e = ETAT, p = e.plan, u = e.usage, st = STATUT_ABO[e.statut], j = daysBetween(TODAY, e.fin_droits);
@@ -934,7 +934,7 @@ function vEquipe() {
     </section></div>`};
 }
 
-/* --- Console Ydila (équipe Ydila) --- */
+/* --- Console (super administrateurs) --- */
 function vConsole() {
   if (!CONSOLE) return {html: emptyState('Chargement de la console…', '')};
   const ags = CONSOLE.agences, pend = CONSOLE.paiements.filter(p => p.statut === 'en_attente');
@@ -1255,7 +1255,7 @@ function openAide() {
   $('#modalRoot .mbox')?.classList.add('wide');
 }
 
-/* ---------- Ydila : session, agences, abonnement ---------- */
+/* ---------- Session, agences, abonnement ---------- */
 function upsellModal(msg) {
   modal(`<h2>Fonction non incluse</h2><p style="margin:0">${esc(msg)}</p><div class="formbar"><span class="sp"></span><button class="btn ghost" data-a="closeModal">Fermer</button>${isAdmin() && MODE === 'supabase' ? '<button class="btn primary" data-a="goAbo">Voir les formules</button>' : ''}</div>`);
 }
