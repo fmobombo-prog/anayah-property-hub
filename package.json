@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "sh dev-server.sh",
-    "build": "mkdir -p dist && cp index.html config.js dist/",
-    "build:dev": "mkdir -p dist && cp index.html config.js dist/"
+    "build": "mkdir -p dist && cp index.html config.js favicon.svg apple-touch-icon.png icon-192.png icon-512.png manifest.webmanifest dist/",
+    "build:dev": "mkdir -p dist && cp index.html config.js favicon.svg apple-touch-icon.png icon-192.png icon-512.png manifest.webmanifest dist/"
   }
 }
