@@ -1,1 +1,2 @@
 - Invoices live in the relational `factures` table, written only via SECURITY DEFINER RPCs (emettre_facture, emettre_avoir, sfec_certifier): keeps numbering gap-free and emitted invoices immutable, as SFEC/DGID requires.
+- NAS edition: `sansAbonnement: true` in `config.js` (`SANS_ABONNEMENT` in index.html) hides the Abonnement view and the trial/expiry banners; rights are made unlimited in the database by the Mobson NAS kit. Default (Lovable/online) behaviour is unchanged.

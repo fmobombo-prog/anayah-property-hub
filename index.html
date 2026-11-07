@@ -327,6 +327,9 @@ const addDays = (d, n) => { const t = new Date(d + 'T00:00'); t.setDate(t.getDat
 
 /* ---------- Abonnements et stockage en ligne (Supabase) ---------- */
 const SBCFG = window.ANAYAH_CONFIG || {};
+// Édition installée chez le client (NAS) : sansAbonnement: true dans config.js retire le module
+// d'abonnement (menu, bandeaux d'essai et d'échéance). Les droits sont rendus illimités en base.
+const SANS_ABONNEMENT = SBCFG.sansAbonnement === true;
 let SB = null, SESSION = null, SESSION_UID = null, AGENCE = null, ETAT = null, SUPER = false, MES_AGENCES = [], CHAN = null;
 let RECOVERY = /type=recovery/.test(location.hash);
 let ABO = {plans: [], paiements: []}, EQUIPE = {membres: [], invitations: []}, CONSOLE = null;
@@ -585,11 +588,11 @@ const VIEWS = [
 ];
 const VIEWS_COMPTE = ['Compte', [['abonnement', 'Abonnement'], ['equipe', 'Équipe'], ['console', 'Console']]];
 const VIEW_INFO = {}; [...VIEWS, VIEWS_COMPTE].forEach(([g, items]) => items.forEach(([k, t]) => VIEW_INFO[k] = {g, t}));
-if (!VIEW_INFO[UI.view]) UI.view = 'dashboard';
+if (!VIEW_INFO[UI.view] || (SANS_ABONNEMENT && UI.view === 'abonnement')) UI.view = 'dashboard';
 const ACCOUNT_VIEWS = ['abonnement', 'equipe', 'console'];
 function navGroups() {
   if (MODE !== 'supabase') return VIEWS;
-  return [...VIEWS, [VIEWS_COMPTE[0], VIEWS_COMPTE[1].filter(([k]) => k !== 'console' || SUPER)]];
+  return [...VIEWS, [VIEWS_COMPTE[0], VIEWS_COMPTE[1].filter(([k]) => (k !== 'console' || SUPER) && (k !== 'abonnement' || !SANS_ABONNEMENT))]];
 }
 
 /* ---------- rendu ---------- */
@@ -602,6 +605,10 @@ function go(v) {
 }
 function bannerHtml() {
   if (MODE === 'local') return `<div class="banner">${SBCFG.supabaseUrl ? 'Le service en ligne est injoignable.' : 'Le stockage en ligne n’est pas configuré.'} Vos saisies sont conservées uniquement dans ce navigateur. Pensez à télécharger régulièrement une sauvegarde depuis « Paramètres ».</div>`;
+  if (MODE === 'supabase' && ETAT && SANS_ABONNEMENT) {
+    if (ETAT.role === 'lecture') return `<div class="banner info">Votre rôle dans l’agence permet la consultation uniquement.</div>`;
+    return '';
+  }
   if (MODE === 'supabase' && ETAT) {
     const fin = ETAT.fin_droits, j = daysBetween(TODAY, fin), renew = isAdmin() ? `<button class="link" data-a="go" data-v="abonnement">${ETAT.statut === 'essai' ? 'Choisir une formule' : 'Renouveler'}</button>` : '';
     if (ETAT.statut === 'essai') return `<div class="banner info">Essai gratuit : ${j} jour(s) restant(s), avec toutes les fonctions de la formule Pro.${renew}</div>`;
